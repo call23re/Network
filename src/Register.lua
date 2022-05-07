@@ -1,10 +1,10 @@
 local RunService = game:GetService("RunService")
 
-local Objects = script.Parent.Objects
+local lib = script.Parent.lib
 local Symbols = script.Parent.Symbols
 
-local Event = require(Objects.RemoteEvent)
-local Function = require(Objects.RemoteFunction)
+local Event = require(lib.RemoteEvent)
+local Function = require(lib.RemoteFunction)
 
 local EventSymbol = require(Symbols.Event)
 local FunctionSymbol = require(Symbols.Function)
