@@ -3,6 +3,10 @@ local RunService = game:GetService("RunService")
 
 local Signal = require(script.Parent.Parent.Parent.Signal)
 
+local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
+local ERR_LENGTH = "First argument of %s must be a table with at least on element"
+local ERR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
+
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
 
@@ -28,16 +32,23 @@ function RemoteEvent:__Init()
 		end
 
 		function self:FireClients(List, ...)
-			for _, Player in pairs(List) do
+			assert(List, ERR_FIRST_ARGUMENT:format("FireClients", "nil"))
+			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClients", typeof(List)))
+			assert(#List > 0, ERR_LENGTH:format("FireClients"))
+
+			for key, Player in pairs(List) do
+				assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
 				self.Remote:FireClient(Player, ...)
 			end
 		end
 
 		function self:FireClientsExcept(List, ...)
+			assert(List, ERR_FIRST_ARGUMENT:format("FireClientsExcept", "nil"))
+			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", typeof(List)))
+
 			for _, Player in pairs(Players:GetPlayers()) do
-				if table.find(List, Player) == nil then
-					self.Remote:FireClient(Player, ...)
-				end
+				if table.find(List, Player) then continue end
+				self.Remote:FireClient(Player, ...)
 			end
 		end
 
