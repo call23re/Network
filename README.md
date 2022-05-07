@@ -1,6 +1,17 @@
 ## Network
 Networking library. Based on [Network](https://github.com/sircfenner/network) (soo original). Not finished.
 
+## Motivation
+Using a remote wrapper means that the source of truth for your remotes exists in your code instead of the data model. This helps keep things organized and it's easier than manually adding them in Studio or with Rojo.
+
+The core API is designed to look like the default remote APIs in order to reduce friction.
+
+Other advantages include:
+- Middleware
+- Asynchronous Remote Functions
+- Promisified Remote Functions
+- An expanded core API (`FireClients`, `FireClientsExcept`)
+
 ## Usage
 ```lua
 -- ReplicatedStorage/Remotes
@@ -46,5 +57,5 @@ end
 
 todo
 - Middleware
-- Proper Promise support
+- Complete Promise support
 - Value Objects
