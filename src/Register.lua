@@ -39,17 +39,17 @@ local function Register(Remotes)
 	end
 
 	if RunService:IsServer() then
-		for name, kind in pairs(Remotes) do
-			if kind == EventSymbol then
+		for name, class in pairs(Remotes) do
+			if class.Type == EventSymbol then
 				local remote = Instance.new("RemoteEvent")
 				remote.Name = name
 				remote.Parent = remoteEventsFolder
 
 				if not REMOTES.EVENTS[name] then
-					local object = Event.new(name, remote)
-					REMOTES.EVENTS[name] = object
+					class:Init(name, remote)
+					REMOTES.EVENTS[name] = class
 				end
-			elseif kind == FunctionSymbol then
+			elseif class.Type == FunctionSymbol then
 				local RequestRemote = Instance.new("RemoteEvent")
 				RequestRemote.Name = "Request" .. name
 				RequestRemote.Parent = remoteFunctionsFolder
@@ -59,29 +59,29 @@ local function Register(Remotes)
 				ResponseRemote.Parent = remoteFunctionsFolder
 
 				if not REMOTES.FUNCTIONS[name] then
-					local object = Function.new(name, RequestRemote, ResponseRemote)
-					REMOTES.FUNCTIONS[name] = object
+					class:Init(name, RequestRemote, ResponseRemote)
+					REMOTES.FUNCTIONS[name] = class
 				end
 			else
 				error(string.format(ERR_INVALID_KIND, name))
 			end
 		end
 	else
-		for name, kind in pairs(Remotes) do
-			if kind == EventSymbol then
+		for name, class in pairs(Remotes) do
+			if class.Type == EventSymbol then
 				local remote = remoteEventsFolder:WaitForChild(name)
 
 				if not REMOTES.EVENTS[name] then
-					local object = Event.new(name, remote)
-					REMOTES.EVENTS[name] = object
+					class:Init(name, remote)
+					REMOTES.EVENTS[name] = class
 				end
-			elseif kind == FunctionSymbol then
+			elseif class.Type == FunctionSymbol then
 				local RequestRemote = remoteFunctionsFolder:WaitForChild("Request" .. name)
 				local ResponseRemote = remoteFunctionsFolder:WaitForChild("Response" .. name)
 
 				if not REMOTES.FUNCTIONS[name] then
-					local object = Function.new(name, RequestRemote, ResponseRemote)
-					REMOTES.FUNCTIONS[name] = object
+					class:Init(name, RequestRemote, ResponseRemote)
+					REMOTES.FUNCTIONS[name] = class
 				end
 			else
 				error(string.format(ERR_INVALID_KIND, name))

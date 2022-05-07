@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Signal = require(script.Parent.Parent.Parent.Signal)
+local Symbol = require(script.Parent.Parent.Symbols.Event)
 
 local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
 local ERR_LENGTH = "First argument of %s must be a table with at least on element"
@@ -10,25 +11,27 @@ local ERR_NOT_PLAYER = "All elements of the first argument of FireClients must b
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
 
-function RemoteEvent.new(Name, Remote)
+function RemoteEvent.new()
 	local self = setmetatable({}, RemoteEvent)
 
-	self.Name = Name
-	self.Remote = Remote
-
-	self:__Init()
+	self.Type = Symbol
 
 	return self
 end
 
-function RemoteEvent:__Init()
+function RemoteEvent:Init(Name, Remote)
+	if self.Instantiated then return end
+	self.Instantiated = true
+
+	self.Name = Name
+
 	if RunService:IsServer() then
 		function self:FireClient(...)
-			self.Remote:FireClient(...)
+			Remote:FireClient(...)
 		end
 
 		function self:FireAllClients(...)
-			self.Remote:FireAllClients(...)
+			Remote:FireAllClients(...)
 		end
 
 		function self:FireClients(List, ...)
@@ -38,7 +41,7 @@ function RemoteEvent:__Init()
 
 			for key, Player in pairs(List) do
 				assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
-				self.Remote:FireClient(Player, ...)
+				Remote:FireClient(Player, ...)
 			end
 		end
 
@@ -48,7 +51,7 @@ function RemoteEvent:__Init()
 
 			for _, Player in pairs(Players:GetPlayers()) do
 				if table.find(List, Player) then continue end
-				self.Remote:FireClient(Player, ...)
+				Remote:FireClient(Player, ...)
 			end
 		end
 
@@ -66,14 +69,14 @@ function RemoteEvent:__Init()
 			end,
 		}
 
-		self.Remote.OnServerEvent:Connect(function(...)
+		Remote.OnServerEvent:Connect(function(...)
 			Signal:Fire(...)
 		end)
 	end
 
 	if RunService:IsClient() then
 		function self:FireServer(...)
-			self.Remote:FireServer(...)
+			Remote:FireServer(...)
 		end
 
 		local Signal = Signal.new()
@@ -90,7 +93,7 @@ function RemoteEvent:__Init()
 			end,
 		}
 
-		self.Remote.OnClientEvent:Connect(function(...)
+		Remote.OnClientEvent:Connect(function(...)
 			Signal:Fire(...)
 		end)
 	end

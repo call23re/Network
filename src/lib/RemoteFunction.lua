@@ -1,30 +1,32 @@
 local RunService = game:GetService("RunService")
 
 local Defer = require(script.Parent.Defer)
+local Symbol = require(script.Parent.Parent.Symbols.Function)
 
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
 
-function RemoteFunction.new(Name, Request, Response)
+function RemoteFunction.new()
 	local self = setmetatable({}, RemoteFunction)
 
-	self.Name = Name
-	self.Request = Request
-	self.Response = Response
-
-	self:__Init()
+	self.Type = Symbol
 
 	return self
 end
 
-function RemoteFunction:__Init()
+function RemoteFunction:Init(Name, Request, Response)
+	if self.Instantiated then return end
+	self.Instantiated = true
+
+	self.Name = Name
+
 	if RunService:IsServer() then
 		local InvokedPromises = {}
 
 		function self:InvokeClient(Client, ...)
 			assert(typeof(Client) == "Instance" and Client:IsA("Player"),  "First argument of InvokeClient must be a Player")
 
-			self.Request:FireClient(Client, ...)
+			Request:FireClient(Client, ...)
 
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
@@ -32,18 +34,18 @@ function RemoteFunction:__Init()
 			return DefferedPromise.Promise
 		end
 
-		self.Response.OnServerEvent:Connect(function(Client, ...)
+		Response.OnServerEvent:Connect(function(Client, ...)
 			for _, Promise in pairs(InvokedPromises) do
 				Promise.Resolve(...)
 			end
 		end)
 
-		self.Request.OnServerEvent:Connect(function(Client, ...)
+		Request.OnServerEvent:Connect(function(Client, ...)
 			if self.OnServerInvoke then
 				local res = {self.OnServerInvoke(Client, ...)}
-				self.Response:FireClient(Client, unpack(res))
+				Response:FireClient(Client, unpack(res))
 			else
-				self.Response:FireClient(Client)
+				Response:FireClient(Client)
 			end
 		end)
 	end
@@ -52,7 +54,7 @@ function RemoteFunction:__Init()
 		local InvokedPromises = {}
 
 		function self:InvokeServer(...)
-			self.Request:FireServer(...)
+			Request:FireServer(...)
 
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
@@ -60,18 +62,18 @@ function RemoteFunction:__Init()
 			return DefferedPromise.Promise
 		end
 
-		self.Response.OnClientEvent:Connect(function(...)
+		Response.OnClientEvent:Connect(function(...)
 			for _, Promise in pairs(InvokedPromises) do
 				Promise.Resolve(...)
 			end
 		end)
 
-		self.Request.OnClientEvent:Connect(function(...)
+		Request.OnClientEvent:Connect(function(...)
 			if self.OnClientInvoke then
 				local res = {self.OnClientInvoke(...)}
-				self.Response:FireServer(unpack(res))
+				Response:FireServer(unpack(res))
 			else
-				self.Response:FireServer()
+				Response:FireServer()
 			end
 		end)
 	end

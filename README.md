@@ -19,8 +19,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Network = require(ReplicatedStorage.Packages.Network)
 
 return Network.Register({
-	TestEvent = Network.Event,
-	TestFunction = Network.Function,
+	TestEvent = Network.Event.new(),
+	TestFunction = Network.Function.new(),
 })
 ```
 
