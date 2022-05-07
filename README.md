@@ -31,7 +31,9 @@ local Remotes = require(ReplicatedStorage.Remotes)
 
 Remotes.GetEvent("TestEvent"):FireServer(1, 2, 3)
 
-Remotes.GetFunction("TestFunction"):InvokeServer(1, 2, 3)
+local TestFunction = Remotes.GetFunction("TestFunction")
+
+TestFunction:InvokeServer(1, 2, 3)
 	:andThen(function(a, b, c)
 		assert(a == 2)
 		assert(b == 3)
@@ -39,6 +41,9 @@ Remotes.GetFunction("TestFunction"):InvokeServer(1, 2, 3)
 		print(a, b, c)
 	end)
 	:catch(warn)
+
+-- or
+local ok, a, b, c = TestFunction:InvokeServer(1, 2, 3):await()
 ```
 
 ```lua
@@ -46,8 +51,8 @@ Remotes.GetFunction("TestFunction"):InvokeServer(1, 2, 3)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes)
 
-Remotes.GetEvent("TestEvent").OnServerEvent:Connect(function(player, a, b, c)
-	print("Received", player, a, b, c)
+Remotes.GetEvent("TestEvent").OnServerEvent:Connect(function(Player, a, b, c)
+	print("Received", Player, a, b, c)
 end)
 
 Remotes.GetFunction("TestFunction").OnServerInvoke = function(Player, a, b, c)
