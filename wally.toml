@@ -1,0 +1,16 @@
+[package]
+name = "do-not-publish/network"
+description = ""
+version = "0.1.0"
+license = "MIT"
+authors = ["call23re2"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+include = ["src", "src/**", "wally.toml", "wally.lock", "default.project.json"]
+exclude = ["**"]
+
+[dependencies]
+TestEZ = "roblox/testez@0.4.1"
+Promise = "evaera/promise@4.0.0"
+Signal = "stravant/goodsignal@0.1.1"

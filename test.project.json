@@ -1,0 +1,36 @@
+
+{
+	"name": "Network",
+	"tree": {
+	  "$className": "DataModel",
+
+	  "StarterPlayer": {
+		"$className": "StarterPlayer",
+		"StarterPlayerScripts": {
+		  "$className": "StarterPlayerScripts",
+		  "Client": {
+			"$path": "tests/Client"
+		  }
+		}
+	  },
+
+	  "ServerScriptService": {
+		"$className": "ServerScriptService",
+		"Server": {
+			"$path": "tests/Server"
+		}
+	  },
+
+	  "ReplicatedStorage": {
+		"$className": "ReplicatedStorage",
+		"$path": "tests/Shared",
+		"Packages": {
+			"$path": "Packages",
+			"Network": {
+				"$path": "src"
+			}
+		}
+	  }
+
+	}
+  }
