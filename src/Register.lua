@@ -50,12 +50,16 @@ local function Register(Remotes)
 					REMOTES.EVENTS[name] = object
 				end
 			elseif kind == FunctionSymbol then
-				local remote = Instance.new("RemoteEvent")
-				remote.Name = name
-				remote.Parent = remoteFunctionsFolder
+				local RequestRemote = Instance.new("RemoteEvent")
+				RequestRemote.Name = "Request" .. name
+				RequestRemote.Parent = remoteFunctionsFolder
+
+				local ResponseRemote = Instance.new("RemoteEvent")
+				ResponseRemote.Name = "Response" .. name
+				ResponseRemote.Parent = remoteFunctionsFolder
 
 				if not REMOTES.FUNCTIONS[name] then
-					local object = Function.new(name, remote)
+					local object = Function.new(name, RequestRemote, ResponseRemote)
 					REMOTES.FUNCTIONS[name] = object
 				end
 			else
@@ -72,10 +76,11 @@ local function Register(Remotes)
 					REMOTES.EVENTS[name] = object
 				end
 			elseif kind == FunctionSymbol then
-				local remote = remoteFunctionsFolder:WaitForChild(name)
+				local RequestRemote = remoteFunctionsFolder:WaitForChild("Request" .. name)
+				local ResponseRemote = remoteFunctionsFolder:WaitForChild("Response" .. name)
 
 				if not REMOTES.FUNCTIONS[name] then
-					local object = Function.new(name, remote)
+					local object = Function.new(name, RequestRemote, ResponseRemote)
 					REMOTES.FUNCTIONS[name] = object
 				end
 			else

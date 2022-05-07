@@ -5,11 +5,12 @@ local Defer = require(script.Parent.Defer)
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
 
-function RemoteFunction.new(Name, Remote)
+function RemoteFunction.new(Name, Request, Response)
 	local self = setmetatable({}, RemoteFunction)
 
 	self.Name = Name
-	self.Remote = Remote
+	self.Request = Request
+	self.Response = Response
 
 	self:__Init()
 
@@ -20,24 +21,29 @@ function RemoteFunction:__Init()
 	if RunService:IsServer() then
 		local InvokedPromises = {}
 
-		function self:InvokeClient(...)
-			self.Remote:FireClient({Status = "Request", Data = {...}})
+		function self:InvokeClient(Client, ...)
+			assert(typeof(Client) == "Instance" and Client:IsA("Player"),  "First argument of InvokeClient must be a Player")
+
+			self.Request:FireClient(Client, ...)
+
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
+
 			return DefferedPromise.Promise
 		end
 
-		self.Remote.OnServerEvent:Connect(function(Client, Result)
-			if Result.Status == "Response" then
-				for _, Promise in pairs(InvokedPromises) do
-					Promise.Resolve(unpack(Result.Data))
-				end
-				return
+		self.Response.OnServerEvent:Connect(function(Client, ...)
+			for _, Promise in pairs(InvokedPromises) do
+				Promise.Resolve(...)
 			end
+		end)
 
+		self.Request.OnServerEvent:Connect(function(Client, ...)
 			if self.OnServerInvoke then
-				local res = {self.OnServerInvoke(Client, unpack(Result.Data))}
-				self.Remote:FireClient(Client, {Status = "Response", Data = res})
+				local res = {self.OnServerInvoke(Client, ...)}
+				self.Response:FireClient(Client, unpack(res))
+			else
+				self.Response:FireClient(Client)
 			end
 		end)
 	end
@@ -46,23 +52,26 @@ function RemoteFunction:__Init()
 		local InvokedPromises = {}
 
 		function self:InvokeServer(...)
-			self.Remote:FireServer({Status = "Request", Data = {...}})
+			self.Request:FireServer(...)
+
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
+			
 			return DefferedPromise.Promise
 		end
 
-		self.Remote.OnClientEvent:Connect(function(Result)
-			if Result.Status == "Response" then
-				for _, Promise in pairs(InvokedPromises) do
-					Promise.Resolve(unpack(Result.Data))
-				end
-				return
+		self.Response.OnClientEvent:Connect(function(...)
+			for _, Promise in pairs(InvokedPromises) do
+				Promise.Resolve(...)
 			end
+		end)
 
+		self.Request.OnClientEvent:Connect(function(...)
 			if self.OnClientInvoke then
-				local res = {self.OnClientInvoke(unpack(Result.Data))}
-				self.Remote:FireServer({Status = "Response", Data = res})
+				local res = {self.OnClientInvoke(...)}
+				self.Response:FireServer(unpack(res))
+			else
+				self.Response:FireServer()
 			end
 		end)
 	end
