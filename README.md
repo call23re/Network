@@ -186,4 +186,4 @@ Remotes.GetEvent("Encoded").OnServerEvent:Connect(function(player, message)
 end)
 ```
 
-Middleware and Transformers still need some work and further testing. In the future Middleware and Transformers will also support optional configuration objects.
+Middleware and Transformers still need some work and further testing. In the future Middleware and Transformers will support optional configuration objects.
