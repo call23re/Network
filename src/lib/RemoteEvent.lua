@@ -5,7 +5,7 @@ local Promise = require(script.Parent.Parent.Parent.Promise)
 local Signal = require(script.Parent.Parent.Parent.Signal)
 local Symbol = require(script.Parent.Parent.Symbols.Event)
 
-local CONTEXT = if RunService:IsServer() then "Server" else "Client"
+local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
 local ERR_LENGTH = "First argument of %s must be a table with at least on element"
 local ERR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
@@ -62,11 +62,12 @@ function RemoteEvent:Init(Name, Remote)
 		return Promise.new(function(Resolve, Reject)
 			Promise.each(List, function(func)
 				return Promise.new(function(Resolve, Reject)
+					-- TODO: support variadic params
 					func(Remote, args):andThen(function(res)
 						args = (res ~= nil and res or args)
 						Resolve()
-					end):catch(function()
-						Reject()
+					end):catch(function(err)
+						Reject(err)
 					end)
 				end)
 			end)
@@ -96,9 +97,11 @@ function RemoteEvent:Init(Name, Remote)
 	if CONTEXT == "Server" then
 		function self:FireClient(Player: Player, ...)
 			ApplyTransformers({...}):andThen(function(args)
+				if args == nil then args = {} end
 				Remote:FireClient(Player, unpack(args))
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent:FireClient")
 					warn(err)
 				end
 			end)
@@ -106,9 +109,11 @@ function RemoteEvent:Init(Name, Remote)
 
 		function self:FireAllClients(...)
 			ApplyTransformers({...}):andThen(function(args)
+				if args == nil then args = {} end
 				Remote:FireAllClients(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent:FireAllClients")
 					warn(err)
 				end
 			end)
@@ -120,12 +125,14 @@ function RemoteEvent:Init(Name, Remote)
 			assert(#List > 0, ERR_LENGTH:format("FireClients"))
 
 			ApplyTransformers({...}):andThen(function(args)
+				if args == nil then args = {} end
 				for key, Player: Player in pairs(List) do
 					assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
 					Remote:FireClient(Player, unpack(args))
 				end
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent:FireClients")
 					warn(err)
 				end
 			end)
@@ -136,12 +143,14 @@ function RemoteEvent:Init(Name, Remote)
 			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", typeof(List)))
 
 			ApplyTransformers({...}):andThen(function(args)
+				if args == nil then args = {} end
 				for _, Player: Player in pairs(Players:GetPlayers()) do
 					if table.find(List, Player) then continue end
 					Remote:FireClient(Player, unpack(args))
 				end
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent:FireClientsExcept")
 					warn(err)
 				end
 			end)
@@ -163,9 +172,11 @@ function RemoteEvent:Init(Name, Remote)
 
 		Remote.OnServerEvent:Connect(function(...)
 			ApplyMiddleware({...}):andThen(function(args)
+				if args == nil then args = {} end
 				Signal:Fire(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent.OnServerEvent")
 					warn(err)
 				end
 			end)
@@ -175,9 +186,11 @@ function RemoteEvent:Init(Name, Remote)
 	if CONTEXT == "Client" then
 		function self:FireServer(...)
 			ApplyTransformers({...}):andThen(function(args)
+				if args == nil then args = {} end
 				Remote:FireServer(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent:FireServer")
 					warn(err)
 				end
 			end)
@@ -199,9 +212,11 @@ function RemoteEvent:Init(Name, Remote)
 
 		Remote.OnClientEvent:Connect(function(...)
 			ApplyMiddleware({...}):andThen(function(args)
+				if args == nil then args = {} end
 				Signal:Fire(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
+					warn(self.Name, "RemoteEvent.OnClientEvent")
 					warn(err)
 				end
 			end)
