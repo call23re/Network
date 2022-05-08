@@ -70,7 +70,7 @@ Middleware functions have two arguments: `Remote` and `args`. **Remote** refers 
 
 Middleware can mutate these arguments however it wants. Other middleware down the chain will receive the mutated arguments as well. These arguments are eventually passed through to the corresponding listener.
 
-The promise returned by the middleware must either resolve or reject. Resolve should resolve your `args` or nil. If you resolve nil, `args` will not be overwritten with nil. If you reject the promise, the middleware chain will abort and the signal will never fire.
+The promise returned by the middleware must either resolve or reject. Resolve should _only_ resolve your `args` or nil. If you resolve nil, `args` will not be overwritten with nil. If you reject the promise, the middleware chain will abort and the signal will never fire. Resolve doesn't currently support variadic parameters.
 
 Middleware is defined in your central _Remotes_ file. It must be defined per remote as a parameter of your remote class definition. When defining your middleware, you must include your middleware function and the context that it runs in (Server, Client, or Shared) in the form of a table. In the future this will be somewhat implicit.
 
@@ -110,7 +110,7 @@ return Network.Register({
 ## Transformers
 Transformers are the same as Middleware, but they work in the outbound direction instead. They run just before you fire a remote.
 
-Transformers have an extra argument for Remote Functions: `Type`. **Type** is passed in as the first parameter before `Remote` and `args`. It can be either "Request" or "Response". Request is when an `Invoke` (InvokeServer, InvokeClient) method is called. Response is when the server/client is responding to an invocation. This order will be changed in the future for consistency.
+Transformers have an extra argument for Remote Functions: `Type`. **Type** is passed in as the third parameter after `Remote` and `args`. It can be either "Request" or "Response". Request is when an `Invoke` (InvokeServer, InvokeClient) method is called. Response is when the server/client is responding to an invocation. This will be changed to be more idiomatic in the future.
 
 Transformers are defined in the same way Middleware is.
 
