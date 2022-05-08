@@ -1,6 +1,6 @@
 [package]
-name = "do-not-publish/network"
-description = ""
+name = "call23re/network"
+description = "Declarative Networking library"
 version = "0.1.0"
 license = "MIT"
 authors = ["call23re2"]

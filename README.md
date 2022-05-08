@@ -187,3 +187,11 @@ end)
 ```
 
 Middleware and Transformers still need some work and further testing. In the future Middleware and Transformers will support optional configuration objects.
+
+## Installation
+
+### With Wally
+```toml
+[dependencies]
+Network = "call23re/network@0.1.0"
+```
