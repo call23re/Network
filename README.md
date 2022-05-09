@@ -99,13 +99,13 @@ return {
 local Middleware = require(...Middleware)
 
 return Network.Register({
-    FooEvent = Network.Event.new({
-        Warn = true, -- optional flag, warns caught rejections
-        Middleware = {
-            {Middleware.Logger, "Shared"},
+	FooEvent = Network.Event.new({
+		Warn = true, -- optional flag, warns caught rejections
+		Middleware = {
+			{Middleware.Logger, "Shared"},
 			{Middleware.RateLimit, "Server"}
-        }
-    }),
+		}
+	}),
 	BarFunction = Network.Function.new({
 		Warn = true,
 		Middleware = {
@@ -168,15 +168,15 @@ local Middleware = require(...Middleware)
 local Transformers = require(...Transformers)
 
 return Network.Register({
-    Encoded = Network.Event.new({
-        Warn = true,
-        Middleware = {
-            {Middleware.Decode, "Shared"}
-        },
-        Transformers = {
-            {Transformers.Encode, "Shared"}
-        }
-    })
+	Encoded = Network.Event.new({
+		Warn = true,
+		Middleware = {
+			{Middleware.Decode, "Shared"}
+		},
+		Transformers = {
+			{Transformers.Encode, "Shared"}
+		}
+	})
 })
 ```
 ```lua
