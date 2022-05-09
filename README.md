@@ -18,7 +18,7 @@ Other advantages include:
 ### With Wally
 ```toml
 [dependencies]
-Network = "call23re/network@0.1.0"
+Network = "call23re/network@1.0.0"
 ```
 
 ## Usage
@@ -72,21 +72,35 @@ end
 ```
 
 ## Middleware
-Middleware is just a function that returns a promise. The function is called (in order) just before any Remote Event or Function listeners are activated. 
+Middleware is just a function that returns a promise. The function is called just before any Remote Event or Function listeners are activated. 
 
-Middleware functions have two arguments: `Remote` and `args`. **Remote** refers to the literal RemoteEvent / RemoteFunction instance being called. **args** refers to the arguments that were sent with that remote.
+Middleware functions have three parameters: `Header`, `Config`, and `args`.
 
-Middleware can mutate these arguments however it wants. Other middleware down the chain will receive the mutated arguments as well. These arguments are eventually passed through to the corresponding listener.
+**Header** is a dictionary that looks like so:
+```lua
+{
+	Remote = Remote_Instance -- Literal instance of your RemoteEvent
+}
+```
+**Config** is a value (usually a dictionary) that is specified when you are defining your middleware.
 
-The promise returned by the middleware must either resolve or reject. Resolve should _only_ resolve your `args` or nil. If you resolve nil, `args` will not be overwritten with nil. If you reject the promise, the middleware chain will abort and the signal will never fire. Resolve doesn't currently support variadic parameters.
+**args** is a variadic parameter (`...`) that refers to the arguments received from the RemoteEvent.
 
-Middleware is defined in your central _Remotes_ file. It must be defined per remote as a parameter of your remote class definition. When defining your middleware, you must include your middleware function and the context that it runs in (Server, Client, or Shared) in the form of a table. In the future this will be somewhat implicit.
+Middleware can mutate args however it wants. Other middleware down the chain will receive the mutated arguments when you resolve them. These arguments are eventually passed through to the corresponding listener.
+
+**Resolve** the Promise returned by middleware with your new args. If you resolve _nil_, it will use the current reference to args. If you want to overwrite args with nil, resolve `Network.None`.
+
+**Reject** the Promise if there is an error. This will abort the middleware chain and the corresponding signal will never fire.
+
+**Define** middleware in a central _Remotes_ file. It must be defined per remote as a parameter of your remote class definition. When defining your middleware, you must include your middleware function and the context that it runs in (Server, Client, or Shared) in the form of a table. This is where you can also optionally include a `Config` value.
+
+**Middleware is called in the order that it is defined.**
 
 Example:
 ```lua
 -- ReplicatedStorage/Middleware
-local function Logger(remote, args)
-	print(("[%s]"):format(remote.Name), unpack(args))
+local function Logger(Header, Config, ...)
+	print(("[%s]"):format(Header.Remote.Name), ...)
 	return Promise.resolve()
 end
 
@@ -103,7 +117,9 @@ return Network.Register({
 		Warn = true, -- optional flag, warns caught rejections
 		Middleware = {
 			{Middleware.Logger, "Shared"},
-			{Middleware.RateLimit, "Server"}
+			{Middleware.RateLimit, "Server", {
+				Max = 10
+			}} -- the third entry is passed in as Config
 		}
 	}),
 	BarFunction = Network.Function.new({
@@ -118,9 +134,9 @@ return Network.Register({
 ## Transformers
 Transformers are the same as Middleware, but they work in the outbound direction instead. They run just before you fire a remote.
 
-Transformers have an extra argument for Remote Functions: `Type`. **Type** is passed in as the third parameter after `Remote` and `args`. It can be either "Request" or "Response". Request is when an `Invoke` (InvokeServer, InvokeClient) method is called. Response is when the server/client is responding to an invocation. This will be changed to be more idiomatic in the future.
+Transformers have an extra header value for Remote Functions: `Type`. It can be either "Request" or "Response". Request is when an `Invoke` (InvokeServer, InvokeClient) method is called. Response is when the server/client is responding to an invocation.
 
-Transformers are defined in the same way Middleware is.
+Transformers are defined in the same way Middleware is. Transformers are _also_ called in the order that they are defined.
 
 Example:
 
@@ -129,14 +145,15 @@ RemoteEvent that encodes data before it's sent and decodes it when it's received
 -- ReplicatedStorage/Transformers
 local base64 = require(...base64)
 
-local function Encode(remote, data)
+local function Encode(Header, Config, ...)
+	local data = {...}
 	return Promise.new(function(resolve, reject)
 		for key, value in pairs(data) do
 			if type(value) == "string" then
 				data[key] = base64.encode(value)
 			end
 		end
-		resolve(data)
+		resolve(unpack(data))
 	end)
 end
 
@@ -147,14 +164,15 @@ return {
 -- ReplicatedStorage/Middleware
 local base64 = require(...base64)
 
-local function Decode(remote, data)
+local function Decode(Header, Config, ...)
+	local data = {...}
 	return Promise.new(function(resolve, reject)
 		for key, value in pairs(data) do
 			if type(value) == "string" then
 				data[key] = base64.decode(value)
 			end
 		end
-		resolve(data)
+		resolve(unpack(data))
 	end)
 end
 
@@ -171,9 +189,11 @@ return Network.Register({
 	Encoded = Network.Event.new({
 		Warn = true,
 		Middleware = {
+			{Middleware.Logger, "Shared"},
 			{Middleware.Decode, "Shared"}
 		},
 		Transformers = {
+			{Middleware.Logger, "Shared"}, -- middleware and transformers that don't care about Type are interchangable
 			{Transformers.Encode, "Shared"}
 		}
 	})
@@ -182,7 +202,7 @@ return Network.Register({
 ```lua
 -- StarterPlayerScripts/Main
 local Remotes = require(...Remotes)
-Remotes.GetEvent("Encoded"):FireServer("do re me fa so la ti do")
+Remotes.GetEvent("Encoded"):FireServer("do re me fa", "so la ti do")
 ```
 ```lua
 -- ServerScriptService/Main
@@ -194,4 +214,4 @@ Remotes.GetEvent("Encoded").OnServerEvent:Connect(function(player, message)
 end)
 ```
 
-Middleware and Transformers still need some work and further testing. In the future Middleware and Transformers will support optional configuration objects.
+Middleware and Transformers still need some work and further testing.
