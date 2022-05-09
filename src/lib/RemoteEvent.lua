@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local Promise = require(script.Parent.Parent.Parent.Promise)
 local Signal = require(script.Parent.Parent.Parent.Signal)
 local Symbol = require(script.Parent.Parent.Symbols.Event)
+local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
@@ -22,7 +23,7 @@ function RemoteEvent.new(Options)
 
 	-- for debugging
 	if Options.Warn ~= nil then
-		self.Warn = true
+		self.Warn = Options.Warn
 	end
 
 	local Middleware = {}
@@ -30,18 +31,20 @@ function RemoteEvent.new(Options)
 
 	if Options.Middleware then
 		for _, MiddlewareOptions in pairs(Options.Middleware) do
-			local func, context = unpack(MiddlewareOptions)
+			local func, context, config = unpack(MiddlewareOptions)
+			config = config or {}
 			if context == CONTEXT or context == "Shared" then
-				table.insert(Middleware, func)
+				table.insert(Middleware, {func, config})
 			end
 		end
 	end
 
 	if Options.Transformers then
 		for _, TransformerOptions in pairs(Options.Transformers) do
-			local func, context = unpack(TransformerOptions)
+			local func, context, config = unpack(TransformerOptions)
+			config = config or {}
 			if context == CONTEXT or context == "Shared" then
-				table.insert(Transformers, func)
+				table.insert(Transformers, {func, config})
 			end
 		end
 	end
@@ -60,15 +63,25 @@ function RemoteEvent:Init(Name, Remote)
 
 	local function ApplyPromises(List, args)
 		return Promise.new(function(Resolve, Reject)
-			Promise.each(List, function(func)
+			Promise.each(List, function(data)
 				return Promise.new(function(Resolve, Reject)
-					-- TODO: support variadic params
-					func(Remote, args):andThen(function(res)
-						args = (res ~= nil and res or args)
+
+					local func, config = unpack(data)
+					local header = {
+						Remote = Remote
+					}
+
+					func(header, config, unpack(args)):andThen(function(...)
+						local res = {...}
+						
+						args = if #res == 0 then args else res
+						args = if #res == 1 and res[1] == None then {} else args
+
 						Resolve()
 					end):catch(function(err)
 						Reject(err)
 					end)
+
 				end)
 			end)
 			:catch(function(err)
@@ -101,7 +114,6 @@ function RemoteEvent:Init(Name, Remote)
 				Remote:FireClient(Player, unpack(args))
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent:FireClient")
 					warn(err)
 				end
 			end)
@@ -113,7 +125,6 @@ function RemoteEvent:Init(Name, Remote)
 				Remote:FireAllClients(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent:FireAllClients")
 					warn(err)
 				end
 			end)
@@ -132,7 +143,6 @@ function RemoteEvent:Init(Name, Remote)
 				end
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent:FireClients")
 					warn(err)
 				end
 			end)
@@ -150,33 +160,34 @@ function RemoteEvent:Init(Name, Remote)
 				end
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent:FireClientsExcept")
 					warn(err)
 				end
 			end)
 		end
 
-		local Signal = Signal.new()
+		local newSignal = Signal.new()
 
 		self.OnServerEvent = {
 			Connect = function(_, cb)
-				return Signal:Connect(cb)
+				return newSignal:Connect(cb)
 			end,
 			Wait = function()
-				return Signal:Wait()
+				return newSignal:Wait()
 			end,
 			DisconnectAll = function()
-				return Signal:DisconnectAll()
+				return newSignal:DisconnectAll()
 			end,
 		}
 
-		Remote.OnServerEvent:Connect(function(...)
-			ApplyMiddleware({...}):andThen(function(args)
-				if args == nil then args = {} end
-				Signal:Fire(unpack(args))
+		Remote.OnServerEvent:Connect(function(Player, ...)
+			ApplyMiddleware({Player, ...}):andThen(function(args)
+				if args == nil then args = {Player} end
+				if args[1] ~= Player then
+					table.insert(args, 1, Player)
+				end
+				newSignal:Fire(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent.OnServerEvent")
 					warn(err)
 				end
 			end)
@@ -190,33 +201,31 @@ function RemoteEvent:Init(Name, Remote)
 				Remote:FireServer(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent:FireServer")
 					warn(err)
 				end
 			end)
 		end
 
-		local Signal = Signal.new()
+		local newSignal = Signal.new()
 
 		self.OnClientEvent = {
 			Connect = function(_, ...)
-				return Signal:Connect(...)
+				return newSignal:Connect(...)
 			end,
 			Wait = function()
-				return Signal:Wait()
+				return newSignal:Wait()
 			end,
 			DisconnectAll = function()
-				return Signal:DisconnectAll()
+				return newSignal:DisconnectAll()
 			end,
 		}
 
 		Remote.OnClientEvent:Connect(function(...)
 			ApplyMiddleware({...}):andThen(function(args)
 				if args == nil then args = {} end
-				Signal:Fire(unpack(args))
+				newSignal:Fire(unpack(args))
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name, "RemoteEvent.OnClientEvent")
 					warn(err)
 				end
 			end)

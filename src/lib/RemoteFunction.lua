@@ -3,6 +3,7 @@ local RunService = game:GetService("RunService")
 local Promise = require(script.Parent.Parent.Parent.Promise)
 local Defer = require(script.Parent.Defer)
 local Symbol = require(script.Parent.Parent.Symbols.Function)
+local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 
@@ -18,7 +19,7 @@ function RemoteFunction.new(Options)
 
 	-- for debugging
 	if Options.Warn ~= nil then
-		self.Warn = true
+		self.Warn = Options.Warn
 	end
 
 	local Middleware = {}
@@ -26,18 +27,20 @@ function RemoteFunction.new(Options)
 
 	if Options.Middleware then
 		for _, MiddlewareOptions in pairs(Options.Middleware) do
-			local func, context = unpack(MiddlewareOptions)
+			local func, context, config = unpack(MiddlewareOptions)
+			config = config or {}
 			if context == CONTEXT or context == "Shared" then
-				table.insert(Middleware, func)
+				table.insert(Middleware, {func, config})
 			end
 		end
 	end
 
 	if Options.Transformers then
 		for _, TransformerOptions in pairs(Options.Transformers) do
-			local func, context = unpack(TransformerOptions)
+			local func, context, config = unpack(TransformerOptions)
+			config = config or {}
 			if context == CONTEXT or context == "Shared" then
-				table.insert(Transformers, func)
+				table.insert(Transformers, {func, config})
 			end
 		end
 	end
@@ -56,12 +59,21 @@ function RemoteFunction:Init(Name, Request, Response)
 
 	local function ApplyPromises(Options, args)
 		return Promise.new(function(Resolve, Reject)
-			Promise.each(Options.List, function(func)
+			Promise.each(Options.List, function(data)
 				return Promise.new(function(Resolve, Reject)
 
-					-- TODO: support variadic params
-					func(Options.Remote, args, Options.Type):andThen(function(res)
-						args = (res ~= nil and res or args)
+					local func, config = unpack(data)
+					local header = {
+						Remote = Options.Remote,
+						Type = Options.Type
+					}
+
+					func(header, config, unpack(args)):andThen(function(...)
+						local res = {...}
+
+						args = if #res == 0 then args else res
+						args = if #res == 1 and res[1] == None then {} else args
+
 						Resolve()
 					end):catch(function(err)
 						Reject(err)
@@ -118,7 +130,6 @@ function RemoteFunction:Init(Name, Request, Response)
 			end):catch(function(err)
 				ok = false
 				if self.Warn then
-					warn(self.Name)
 					warn(err)
 				end
 			end)
@@ -139,7 +150,6 @@ function RemoteFunction:Init(Name, Request, Response)
 				end
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name)
 					warn(err)
 				end
 			end)
@@ -148,7 +158,10 @@ function RemoteFunction:Init(Name, Request, Response)
 		Request.OnServerEvent:Connect(function(Client, ...)
 			if self.OnServerInvoke then
 				ApplyMiddleware({Client, ...}):andThen(function(args)
-					if args == nil then args = {} end
+					if args == nil then args = {Client} end
+					if args[1] ~= Client then
+						table.insert(args, 1, Client)
+					end
 					
 					local res = {self.OnServerInvoke(unpack(args))}
 					ApplyTransformers(Response, {Client, unpack(res)}):andThen(function(args)
@@ -157,14 +170,12 @@ function RemoteFunction:Init(Name, Request, Response)
 						Response:FireClient(Client, unpack(args))
 					end):catch(function(err)
 						if self.Warn then
-							warn(self.Name)
 							warn(err)
 						end
 					end)
 
 				end):catch(function(err)
 					if self.Warn then
-						warn(self.Name)
 						warn(err)
 					end
 				end)
@@ -186,7 +197,6 @@ function RemoteFunction:Init(Name, Request, Response)
 			end):catch(function(err)
 				ok = false
 				if self.Warn then
-					warn(self.Name)
 					warn(err)
 				end
 			end)
@@ -207,7 +217,6 @@ function RemoteFunction:Init(Name, Request, Response)
 				end
 			end):catch(function(err)
 				if self.Warn then
-					warn(self.Name)
 					warn(err)
 				end
 			end)
@@ -224,14 +233,12 @@ function RemoteFunction:Init(Name, Request, Response)
 						Response:FireServer(unpack(args))
 					end):catch(function(err)
 						if self.Warn then
-							warn(self.Name)
 							warn(err)
 						end
 					end)
 
 				end):catch(function(err)
 					if self.Warn then
-						warn(self.Name)
 						warn(err)
 					end
 				end)
