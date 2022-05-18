@@ -17,7 +17,6 @@ function RemoteFunction.new(Options)
 
 	Options = Options or {}
 
-	-- for debugging
 	if Options.Warn ~= nil then
 		self.Warn = Options.Warn
 	end
@@ -108,7 +107,7 @@ function RemoteFunction:Init(Name, Request, Response)
 
 		local Type = (Remote == Request and "Request" or "Response")
 		return ApplyPromises({
-			Remote = Remote, 
+			Remote = Remote,
 			List = self.Transformers,
 			Type = Type,
 			args = args
@@ -121,20 +120,22 @@ function RemoteFunction:Init(Name, Request, Response)
 		function self:InvokeClient(Client: Player, ...)
 			assert(typeof(Client) == "Instance" and Client:IsA("Player"),  "First argument of InvokeClient must be a Player")
 
-			local ok = true
+			local ok, res = true
 
 			ApplyTransformers(Request, {Client, ...}):andThen(function(args)
 				if args == nil then args = {} end
 				table.remove(args, 1) -- remove the client
 				Request:FireClient(Client, unpack(args))
 			end):catch(function(err)
-				ok = false
+				ok, res = false, err
 				if self.Warn then
 					warn(err)
 				end
 			end)
 
-			if not ok then return end
+			if not ok then
+				return Promise.reject(res)
+			end
 
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
@@ -145,10 +146,13 @@ function RemoteFunction:Init(Name, Request, Response)
 		Response.OnServerEvent:Connect(function(Client, ...)
 			ApplyMiddleware({...}):andThen(function(args)
 				if args == nil then args = {} end
-				for _, Promise in pairs(InvokedPromises) do
-					Promise.Resolve(unpack(args))
+				for _, ResponsePromise in pairs(InvokedPromises) do
+					ResponsePromise.Resolve(unpack(args))
 				end
 			end):catch(function(err)
+				for _, ResponsePromise in pairs(InvokedPromises) do
+					ResponsePromise.Reject(err)
+				end
 				if self.Warn then
 					warn(err)
 				end
@@ -162,7 +166,7 @@ function RemoteFunction:Init(Name, Request, Response)
 					if args[1] ~= Client then
 						table.insert(args, 1, Client)
 					end
-					
+
 					local res = {self.OnServerInvoke(unpack(args))}
 					ApplyTransformers(Response, {Client, unpack(res)}):andThen(function(args)
 						if args == nil then args = {} end
@@ -189,33 +193,38 @@ function RemoteFunction:Init(Name, Request, Response)
 		local InvokedPromises = {}
 
 		function self:InvokeServer(...)
-			local ok = true
+			local ok, res = true
 
 			ApplyTransformers(Request, {...}):andThen(function(args)
 				if args == nil then args = {} end
 				Request:FireServer(unpack(args))
 			end):catch(function(err)
-				ok = false
+				ok, res = false, err
 				if self.Warn then
 					warn(err)
 				end
 			end)
 
-			if not ok then return end
+			if not ok then
+				return Promise.reject(res)
+			end
 
 			local DefferedPromise = Defer()
 			table.insert(InvokedPromises, DefferedPromise)
-			
+
 			return DefferedPromise.Promise
 		end
 
 		Response.OnClientEvent:Connect(function(...)
 			ApplyMiddleware({...}):andThen(function(args)
-				for _, Promise in pairs(InvokedPromises) do
+				for _, ResponsePromise in pairs(InvokedPromises) do
 					if args == nil then args = {} end
-					Promise.Resolve(unpack(args))
+					ResponsePromise.Resolve(unpack(args))
 				end
 			end):catch(function(err)
+				for _, ResponsePromise in pairs(InvokedPromises) do
+					ResponsePromise.Reject(err)
+				end
 				if self.Warn then
 					warn(err)
 				end
@@ -226,7 +235,7 @@ function RemoteFunction:Init(Name, Request, Response)
 			if self.OnClientInvoke then
 				ApplyMiddleware({...}):andThen(function(args)
 					if args == nil then args = {} end
-					
+
 					local res = {self.OnClientInvoke(unpack(args))}
 					ApplyTransformers(Response, res):andThen(function(args)
 						if args == nil then args = {} end
