@@ -21,7 +21,6 @@ function RemoteEvent.new(Options)
 
 	Options = Options or {}
 
-	-- for debugging
 	if Options.Warn ~= nil then
 		self.Warn = Options.Warn
 	end
@@ -73,7 +72,7 @@ function RemoteEvent:Init(Name, Remote)
 
 					func(header, config, unpack(args)):andThen(function(...)
 						local res = {...}
-						
+
 						args = if #res == 0 then args else res
 						args = if #res == 1 and res[1] == None then {} else args
 
