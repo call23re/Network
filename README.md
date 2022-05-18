@@ -18,7 +18,7 @@ Other advantages include:
 ### With Wally
 ```toml
 [dependencies]
-Network = "call23re/network@1.0.0"
+Network = "call23re/network@1.1.0"
 ```
 
 ## Usage
@@ -78,9 +78,7 @@ Middleware functions have three parameters: `Header`, `Config`, and `args`.
 
 **Header** is a dictionary that looks like so:
 ```lua
-{
-	Remote = Remote_Instance -- Literal instance of your RemoteEvent
-}
+{ Remote = Remote_Instance } -- Literal instance of your RemoteEvent
 ```
 **Config** is a value (usually a dictionary) that is specified when you are defining your middleware.
 
@@ -132,7 +130,7 @@ return Network.Register({
 ```
 
 ## Transformers
-Transformers are the same as Middleware, but they work in the outbound direction instead. They run just before you fire a remote.
+Transformers are the same as Middleware, but they work in the outbound direction instead. They run just before you fire or invoke a remote.
 
 Transformers have an extra header value for Remote Functions: `Type`. It can be either "Request" or "Response". Request is when an `Invoke` (InvokeServer, InvokeClient) method is called. Response is when the server/client is responding to an invocation.
 
