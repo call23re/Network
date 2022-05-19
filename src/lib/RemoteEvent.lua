@@ -23,9 +23,7 @@ function RemoteEvent.new()
 	self._Warn = false
 
 	self._Inbound = {}
-	self._InboundMap = {}
 	self._Outbound = {}
-	self._OutboundMap = {}
 
 	return self
 end
