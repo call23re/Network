@@ -31,22 +31,16 @@ function RemoteEvent.new()
 end
 
 function RemoteEvent:inbound(hook: HookType, context: string, config: any)
-	if self._InboundMap[hook] then return self end
-
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
-		self._InboundMap[hook] = true
 	end
 
 	return self
 end
 
 function RemoteEvent:outbound(hook: HookType, context: string, config: any)
-	if self._OutboundMap[hook] then return self end
-
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
-		self._OutboundMap[hook] = true
 	end
 
 	return self

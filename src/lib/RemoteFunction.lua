@@ -19,30 +19,22 @@ function RemoteFunction.new()
 	self._Warn = false
 
 	self._Inbound = {}
-	self._InboundMap = {}
 	self._Outbound = {}
-	self._OutboundMap = {}
 
 	return self
 end
 
 function RemoteFunction:inbound(hook: HookType, context: string, config: any)
-	if self._InboundMap[hook] then return self end
-
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
-		self._InboundMap[hook] = true
 	end
 
 	return self
 end
 
 function RemoteFunction:outbound(hook: HookType, context: string, config: any)
-	if self._OutboundMap[hook] then return self end
-
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
-		self._OutboundMap[hook] = true
 	end
 
 	return self
