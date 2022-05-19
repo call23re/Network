@@ -152,13 +152,6 @@ local function Encode(Header, Config, ...)
 	end)
 end
 
-return {
-	Encode = Encode
-}
-
--- ReplicatedStorage/Middleware
-local base64 = require(...base64)
-
 local function Decode(Header, Config, ...)
 	local data = {...}
 	return Promise.new(function(resolve, reject)
@@ -172,6 +165,7 @@ local function Decode(Header, Config, ...)
 end
 
 return {
+	Encode = Encode,
 	Decode = Decode
 }
 ```
@@ -183,7 +177,7 @@ local Transformers = require(...Transformers)
 return Network.Register({
 	Encoded = Network.Event.new()
 		:inbound(Middleware.Logger, "Shared")
-		:inbound(Middleware.Decode, "Shared")
+		:inbound(Transformers.Decode, "Shared")
 		:outbound(Middleware.Logger, "Shared")
 		:outbound(Transformers.Encode, "Shared")
 		:warn(true)
