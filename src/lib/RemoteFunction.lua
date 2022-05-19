@@ -28,7 +28,6 @@ function RemoteFunction:inbound(hook: HookType, context: string, config: any)
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
 	end
-
 	return self
 end
 
@@ -36,7 +35,6 @@ function RemoteFunction:outbound(hook: HookType, context: string, config: any)
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
 	end
-
 	return self
 end
 
