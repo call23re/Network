@@ -7,50 +7,53 @@ local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 
+type HookType<T...> = (T...) -> ()
+
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
 
-function RemoteFunction.new(Options)
+function RemoteFunction.new()
 	local self = setmetatable({}, RemoteFunction)
 
-	self.Type = Symbol
+	self.ClassName = Symbol
+	self._Warn = false
 
-	Options = Options or {}
-
-	if Options.Warn ~= nil then
-		self.Warn = Options.Warn
-	end
-
-	local Middleware = {}
-	local Transformers = {}
-
-	if Options.Middleware then
-		for _, MiddlewareOptions in pairs(Options.Middleware) do
-			local func, context, config = unpack(MiddlewareOptions)
-			config = config or {}
-			if context == CONTEXT or context == "Shared" then
-				table.insert(Middleware, {func, config})
-			end
-		end
-	end
-
-	if Options.Transformers then
-		for _, TransformerOptions in pairs(Options.Transformers) do
-			local func, context, config = unpack(TransformerOptions)
-			config = config or {}
-			if context == CONTEXT or context == "Shared" then
-				table.insert(Transformers, {func, config})
-			end
-		end
-	end
-
-	self.Middleware = Middleware
-	self.Transformers = Transformers
+	self._Inbound = {}
+	self._InboundMap = {}
+	self._Outbound = {}
+	self._OutboundMap = {}
 
 	return self
 end
 
-function RemoteFunction:Init(Name, Request, Response)
+function RemoteFunction:inbound(hook: HookType, context: string, config: any)
+	if self._InboundMap[hook] then return self end
+
+	if context == CONTEXT or context == "Shared" then
+		table.insert(self._Inbound, {hook, config})
+		self._InboundMap[hook] = true
+	end
+
+	return self
+end
+
+function RemoteFunction:outbound(hook: HookType, context: string, config: any)
+	if self._OutboundMap[hook] then return self end
+
+	if context == CONTEXT or context == "Shared" then
+		table.insert(self._Outbound, {hook, config})
+		self._OutboundMap[hook] = true
+	end
+
+	return self
+end
+
+function RemoteFunction:warn(value: boolean)
+	self._Warn = value
+	return self
+end
+
+function RemoteFunction:__Init(Name, Request, Response)
 	if self.Instantiated then return end
 	self.Instantiated = true
 
@@ -89,26 +92,26 @@ function RemoteFunction:Init(Name, Request, Response)
 		end)
 	end
 
-	local function ApplyMiddleware(args)
-		if #self.Middleware == 0 then
+	local function ApplyInbound(args)
+		if #self._Inbound == 0 then
 			return Promise.resolve(args)
 		end
 		return ApplyPromises({
 			Remote = Response,
-			List = self.Middleware,
+			List = self._Inbound,
 			args = args
 		}, args)
 	end
 
-	local function ApplyTransformers(Remote, args)
-		if #self.Transformers == 0 then
+	local function ApplyOutbound(Remote, args)
+		if #self._Outbound == 0 then
 			return Promise.resolve(args)
 		end
 
 		local Type = (Remote == Request and "Request" or "Response")
 		return ApplyPromises({
 			Remote = Remote,
-			List = self.Transformers,
+			List = self._Outbound,
 			Type = Type,
 			args = args
 		}, args)
@@ -122,7 +125,7 @@ function RemoteFunction:Init(Name, Request, Response)
 
 			local ok, res = true
 
-			ApplyTransformers(Request, {Client, ...}):andThen(function(args)
+			ApplyOutbound(Request, {Client, ...}):andThen(function(args)
 				if args == nil then args = {} end
 				table.remove(args, 1) -- remove the client
 				Request:FireClient(Client, unpack(args))
@@ -144,7 +147,7 @@ function RemoteFunction:Init(Name, Request, Response)
 		end
 
 		Response.OnServerEvent:Connect(function(Client, ...)
-			ApplyMiddleware({...}):andThen(function(args)
+			ApplyInbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				for _, ResponsePromise in pairs(InvokedPromises) do
 					ResponsePromise.Resolve(unpack(args))
@@ -161,14 +164,14 @@ function RemoteFunction:Init(Name, Request, Response)
 
 		Request.OnServerEvent:Connect(function(Client, ...)
 			if self.OnServerInvoke then
-				ApplyMiddleware({Client, ...}):andThen(function(args)
+				ApplyInbound({Client, ...}):andThen(function(args)
 					if args == nil then args = {Client} end
 					if args[1] ~= Client then
 						table.insert(args, 1, Client)
 					end
 
 					local res = {self.OnServerInvoke(unpack(args))}
-					ApplyTransformers(Response, {Client, unpack(res)}):andThen(function(args)
+					ApplyOutbound(Response, {Client, unpack(res)}):andThen(function(args)
 						if args == nil then args = {} end
 						table.remove(args, 1) -- remove the client
 						Response:FireClient(Client, unpack(args))
@@ -195,7 +198,7 @@ function RemoteFunction:Init(Name, Request, Response)
 		function self:InvokeServer(...)
 			local ok, res = true
 
-			ApplyTransformers(Request, {...}):andThen(function(args)
+			ApplyOutbound(Request, {...}):andThen(function(args)
 				if args == nil then args = {} end
 				Request:FireServer(unpack(args))
 			end):catch(function(err)
@@ -216,7 +219,7 @@ function RemoteFunction:Init(Name, Request, Response)
 		end
 
 		Response.OnClientEvent:Connect(function(...)
-			ApplyMiddleware({...}):andThen(function(args)
+			ApplyInbound({...}):andThen(function(args)
 				for _, ResponsePromise in pairs(InvokedPromises) do
 					if args == nil then args = {} end
 					ResponsePromise.Resolve(unpack(args))
@@ -233,11 +236,11 @@ function RemoteFunction:Init(Name, Request, Response)
 
 		Request.OnClientEvent:Connect(function(...)
 			if self.OnClientInvoke then
-				ApplyMiddleware({...}):andThen(function(args)
+				ApplyInbound({...}):andThen(function(args)
 					if args == nil then args = {} end
 
 					local res = {self.OnClientInvoke(unpack(args))}
-					ApplyTransformers(Response, res):andThen(function(args)
+					ApplyOutbound(Response, res):andThen(function(args)
 						if args == nil then args = {} end
 						Response:FireServer(unpack(args))
 					end):catch(function(err)

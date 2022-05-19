@@ -11,50 +11,53 @@ local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
 local ERR_LENGTH = "First argument of %s must be a table with at least on element"
 local ERR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
 
+type HookType<T...> = (T...) -> ()
+
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
 
-function RemoteEvent.new(Options)
+function RemoteEvent.new()
 	local self = setmetatable({}, RemoteEvent)
 
-	self.Type = Symbol
+	self.ClassName = Symbol
+	self._Warn = false
 
-	Options = Options or {}
-
-	if Options.Warn ~= nil then
-		self.Warn = Options.Warn
-	end
-
-	local Middleware = {}
-	local Transformers = {}
-
-	if Options.Middleware then
-		for _, MiddlewareOptions in pairs(Options.Middleware) do
-			local func, context, config = unpack(MiddlewareOptions)
-			config = config or {}
-			if context == CONTEXT or context == "Shared" then
-				table.insert(Middleware, {func, config})
-			end
-		end
-	end
-
-	if Options.Transformers then
-		for _, TransformerOptions in pairs(Options.Transformers) do
-			local func, context, config = unpack(TransformerOptions)
-			config = config or {}
-			if context == CONTEXT or context == "Shared" then
-				table.insert(Transformers, {func, config})
-			end
-		end
-	end
-
-	self.Middleware = Middleware
-	self.Transformers = Transformers
+	self._Inbound = {}
+	self._InboundMap = {}
+	self._Outbound = {}
+	self._OutboundMap = {}
 
 	return self
 end
 
-function RemoteEvent:Init(Name, Remote)
+function RemoteEvent:inbound(hook: HookType, context: string, config: any)
+	if self._InboundMap[hook] then return self end
+
+	if context == CONTEXT or context == "Shared" then
+		table.insert(self._Inbound, {hook, config})
+		self._InboundMap[hook] = true
+	end
+
+	return self
+end
+
+function RemoteEvent:outbound(hook: HookType, context: string, config: any)
+	if self._OutboundMap[hook] then return self end
+
+	if context == CONTEXT or context == "Shared" then
+		table.insert(self._Outbound, {hook, config})
+		self._OutboundMap[hook] = true
+	end
+
+	return self
+end
+
+function RemoteEvent:warn(value: boolean)
+	self._Warn = value
+	return self
+end
+
+function RemoteEvent:__Init(Name, Remote)
 	if self.Instantiated then return end
 	self.Instantiated = true
 
@@ -65,12 +68,12 @@ function RemoteEvent:Init(Name, Remote)
 			Promise.each(List, function(data)
 				return Promise.new(function(Resolve, Reject)
 
-					local func, config = unpack(data)
+					local hook, config = unpack(data)
 					local header = {
 						Remote = Remote
 					}
 
-					func(header, config, unpack(args)):andThen(function(...)
+					hook(header, config, unpack(args)):andThen(function(...)
 						local res = {...}
 
 						args = if #res == 0 then args else res
@@ -92,38 +95,38 @@ function RemoteEvent:Init(Name, Remote)
 		end)
 	end
 
-	local function ApplyMiddleware(args)
-		if #self.Middleware == 0 then
+	local function ApplyInbound(args)
+		if #self._Inbound == 0 then
 			return Promise.resolve(args)
 		end
-		return ApplyPromises(self.Middleware, args)
+		return ApplyPromises(self._Inbound, args)
 	end
 
-	local function ApplyTransformers(args)
-		if #self.Transformers == 0 then
+	local function ApplyOutbound(args)
+		if #self._Outbound == 0 then
 			return Promise.resolve(args)
 		end
-		return ApplyPromises(self.Transformers, args)
+		return ApplyPromises(self._Outbound, args)
 	end
 
 	if CONTEXT == "Server" then
 		function self:FireClient(Player: Player, ...)
-			ApplyTransformers({...}):andThen(function(args)
+			ApplyOutbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				Remote:FireClient(Player, unpack(args))
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
 		end
 
 		function self:FireAllClients(...)
-			ApplyTransformers({...}):andThen(function(args)
+			ApplyOutbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				Remote:FireAllClients(unpack(args))
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
@@ -134,14 +137,14 @@ function RemoteEvent:Init(Name, Remote)
 			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClients", typeof(List)))
 			assert(#List > 0, ERR_LENGTH:format("FireClients"))
 
-			ApplyTransformers({...}):andThen(function(args)
+			ApplyOutbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				for key, Player: Player in pairs(List) do
 					assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
 					Remote:FireClient(Player, unpack(args))
 				end
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
@@ -151,14 +154,14 @@ function RemoteEvent:Init(Name, Remote)
 			assert(List, ERR_FIRST_ARGUMENT:format("FireClientsExcept", "nil"))
 			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", typeof(List)))
 
-			ApplyTransformers({...}):andThen(function(args)
+			ApplyOutbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				for _, Player: Player in pairs(Players:GetPlayers()) do
 					if table.find(List, Player) then continue end
 					Remote:FireClient(Player, unpack(args))
 				end
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
@@ -179,14 +182,14 @@ function RemoteEvent:Init(Name, Remote)
 		}
 
 		Remote.OnServerEvent:Connect(function(Player, ...)
-			ApplyMiddleware({Player, ...}):andThen(function(args)
+			ApplyInbound({Player, ...}):andThen(function(args)
 				if args == nil then args = {Player} end
 				if args[1] ~= Player then
 					table.insert(args, 1, Player)
 				end
 				newSignal:Fire(unpack(args))
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
@@ -195,11 +198,11 @@ function RemoteEvent:Init(Name, Remote)
 
 	if CONTEXT == "Client" then
 		function self:FireServer(...)
-			ApplyTransformers({...}):andThen(function(args)
+			ApplyOutbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				Remote:FireServer(unpack(args))
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
@@ -220,11 +223,11 @@ function RemoteEvent:Init(Name, Remote)
 		}
 
 		Remote.OnClientEvent:Connect(function(...)
-			ApplyMiddleware({...}):andThen(function(args)
+			ApplyInbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				newSignal:Fire(unpack(args))
 			end):catch(function(err)
-				if self.Warn then
+				if self._Warn then
 					warn(err)
 				end
 			end)
