@@ -6,8 +6,7 @@ local Symbol = require(script.Parent.Parent.Symbols.Function)
 local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
-
-type HookType<T...> = (T...) -> ()
+local ERR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
@@ -24,21 +23,31 @@ function RemoteFunction.new()
 	return self
 end
 
-function RemoteFunction:inbound(hook: HookType, context: string, config: any)
+function RemoteFunction:inbound(hook, context: string, config: any)
+	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
+
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
 	end
+
 	return self
 end
 
-function RemoteFunction:outbound(hook: HookType, context: string, config: any)
+function RemoteFunction:outbound(hook, context: string, config: any)
+	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
+
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
 	end
+
 	return self
 end
 
 function RemoteFunction:warn(value: boolean)
+	assert(typeof(value) == "boolean", ERR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
+
 	self._Warn = value
 	return self
 end

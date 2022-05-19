@@ -7,11 +7,9 @@ local Symbol = require(script.Parent.Parent.Symbols.Event)
 local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
-local ERR_FIRST_ARGUMENT = "First argument of %s must be a table, got <%s>"
+local ERR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 local ERR_LENGTH = "First argument of %s must be a table with at least on element"
 local ERR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
-
-type HookType<T...> = (T...) -> ()
 
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
@@ -28,21 +26,31 @@ function RemoteEvent.new()
 	return self
 end
 
-function RemoteEvent:inbound(hook: HookType, context: string, config: any)
+function RemoteEvent:inbound(hook, context: string, config: any)
+	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
+
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
 	end
+
 	return self
 end
 
-function RemoteEvent:outbound(hook: HookType, context: string, config: any)
+function RemoteEvent:outbound(hook, context: string, config: any)
+	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
+
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
 	end
+
 	return self
 end
 
 function RemoteEvent:warn(value: boolean)
+	assert(typeof(value) == "boolean", ERR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
+
 	self._Warn = value
 	return self
 end
@@ -135,8 +143,8 @@ function RemoteEvent:__Init(Name, Remote)
 		end
 
 		function self:FireClients(List, ...)
-			assert(List, ERR_FIRST_ARGUMENT:format("FireClients", "nil"))
-			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClients", typeof(List)))
+			assert(List, ERR_FIRST_ARGUMENT:format("FireClients", "table", "nil"))
+			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClients", "table", typeof(List)))
 			assert(#List > 0, ERR_LENGTH:format("FireClients"))
 
 			local args = {...}
@@ -159,8 +167,8 @@ function RemoteEvent:__Init(Name, Remote)
 		end
 
 		function self:FireClientsExcept(List, ...)
-			assert(List, ERR_FIRST_ARGUMENT:format("FireClientsExcept", "nil"))
-			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", typeof(List)))
+			assert(List, ERR_FIRST_ARGUMENT:format("FireClientsExcept", "table", "nil"))
+			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", "table", typeof(List)))
 
 			local args = {...}
 
@@ -192,7 +200,7 @@ function RemoteEvent:__Init(Name, Remote)
 			end,
 			DisconnectAll = function()
 				return newSignal:DisconnectAll()
-			end,
+			end
 		}
 
 		Remote.OnServerEvent:Connect(function(Player, ...)
@@ -239,7 +247,7 @@ function RemoteEvent:__Init(Name, Remote)
 			end,
 			DisconnectAll = function()
 				return newSignal:DisconnectAll()
-			end,
+			end
 		}
 
 		Remote.OnClientEvent:Connect(function(...)
