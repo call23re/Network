@@ -111,24 +111,36 @@ function RemoteEvent:__Init(Name, Remote)
 
 	if CONTEXT == "Server" then
 		function self:FireClient(Player: Player, ...)
-			ApplyOutbound({...}):andThen(function(args)
-				if args == nil then args = {} end
-				Remote:FireClient(Player, unpack(args))
-			end):catch(function(err)
-				if self._Warn then
-					warn(err)
-				end
+			local args = {...}
+
+			return Promise.new(function(resolve, reject)
+				ApplyOutbound(args):andThen(function(new_args)
+					if new_args == nil then new_args = {} end
+					Remote:FireClient(Player, unpack(new_args))
+					resolve(unpack(new_args))
+				end):catch(function(err)
+					if self._Warn then
+						warn(err)
+					end
+					reject(err)
+				end)
 			end)
 		end
 
 		function self:FireAllClients(...)
-			ApplyOutbound({...}):andThen(function(args)
-				if args == nil then args = {} end
-				Remote:FireAllClients(unpack(args))
-			end):catch(function(err)
-				if self._Warn then
-					warn(err)
-				end
+			local args = {...}
+
+			return Promise.new(function(resolve, reject)
+				ApplyOutbound(args):andThen(function(new_args)
+					if new_args == nil then new_args = {} end
+					Remote:FireAllClients(unpack(new_args))
+					resolve(unpack(new_args))
+				end):catch(function(err)
+					if self._Warn then
+						warn(err)
+					end
+					reject(err)
+				end)
 			end)
 		end
 
@@ -137,16 +149,22 @@ function RemoteEvent:__Init(Name, Remote)
 			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClients", typeof(List)))
 			assert(#List > 0, ERR_LENGTH:format("FireClients"))
 
-			ApplyOutbound({...}):andThen(function(args)
-				if args == nil then args = {} end
-				for key, Player: Player in pairs(List) do
-					assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
-					Remote:FireClient(Player, unpack(args))
-				end
-			end):catch(function(err)
-				if self._Warn then
-					warn(err)
-				end
+			local args = {...}
+
+			return Promise.new(function(resolve, reject)
+				ApplyOutbound(args):andThen(function(new_args)
+					if new_args == nil then new_args = {} end
+					for key, Player: Player in pairs(List) do
+						assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERR_NOT_PLAYER:format(typeof(Player), key))
+						Remote:FireClient(Player, unpack(new_args))
+					end
+					resolve(unpack(new_args))
+				end):catch(function(err)
+					if self._Warn then
+						warn(err)
+					end
+					reject(err)
+				end)
 			end)
 		end
 
@@ -154,16 +172,22 @@ function RemoteEvent:__Init(Name, Remote)
 			assert(List, ERR_FIRST_ARGUMENT:format("FireClientsExcept", "nil"))
 			assert(typeof(List) == "table", ERR_FIRST_ARGUMENT:format("FireClientsExcept", typeof(List)))
 
-			ApplyOutbound({...}):andThen(function(args)
-				if args == nil then args = {} end
-				for _, Player: Player in pairs(Players:GetPlayers()) do
-					if table.find(List, Player) then continue end
-					Remote:FireClient(Player, unpack(args))
-				end
-			end):catch(function(err)
-				if self._Warn then
-					warn(err)
-				end
+			local args = {...}
+
+			return Promise.new(function(resolve, reject)
+				ApplyOutbound(args):andThen(function(new_args)
+					if new_args == nil then new_args = {} end
+					for _, Player: Player in pairs(Players:GetPlayers()) do
+						if table.find(List, Player) then continue end
+						Remote:FireClient(Player, unpack(new_args))
+					end
+					resolve(unpack(new_args))
+				end):catch(function(err)
+					if self._Warn then
+						warn(err)
+					end
+					reject(err)
+				end)
 			end)
 		end
 
@@ -198,13 +222,19 @@ function RemoteEvent:__Init(Name, Remote)
 
 	if CONTEXT == "Client" then
 		function self:FireServer(...)
-			ApplyOutbound({...}):andThen(function(args)
-				if args == nil then args = {} end
-				Remote:FireServer(unpack(args))
-			end):catch(function(err)
-				if self._Warn then
-					warn(err)
-				end
+			local args = {...}
+
+			return Promise.new(function(resolve, reject)
+				ApplyOutbound(args):andThen(function(new_args)
+					if new_args == nil then new_args = {} end
+					Remote:FireServer(unpack(new_args))
+					resolve(unpack(new_args))
+				end):catch(function(err)
+					if self._Warn then
+						warn(err)
+					end
+					reject(err)
+				end)
 			end)
 		end
 
