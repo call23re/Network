@@ -9,9 +9,9 @@ local DIR = script.Parent
 local DIR_NAME_EVENTS = "RemoteEvents"
 local DIR_NAME_FUNCTIONS = "RemoteFunctions"
 
-local ERR_NO_EVENT = "RemoteEvent `%s` was not registered"
-local ERR_NO_FUNCTION = "RemoteFunction `%s` was not registered"
-local ERR_INVALID_KIND = "Invalid remote type registered for key `%s`"
+local ERROR_NO_EVENT = "RemoteEvent `%s` was not registered"
+local ERROR_NO_FUNCTION = "RemoteFunction `%s` was not registered"
+local ERROR_INVALID_KIND = "Invalid remote type registered for key `%s`"
 
 local REMOTES = {
 	EVENTS = {},
@@ -59,7 +59,7 @@ local function Register(Remotes)
 					REMOTES.FUNCTIONS[name] = class
 				end
 			else
-				error(string.format(ERR_INVALID_KIND, name))
+				error(string.format(ERROR_INVALID_KIND, name))
 			end
 		end
 	else
@@ -80,7 +80,7 @@ local function Register(Remotes)
 					REMOTES.FUNCTIONS[name] = class
 				end
 			else
-				error(string.format(ERR_INVALID_KIND, name))
+				error(ERROR_INVALID_KIND:format(name))
 			end
 		end
 	end
@@ -88,7 +88,7 @@ local function Register(Remotes)
 	local function GetEvent(name)
 		local remote = REMOTES.EVENTS[name]
 		if not remote then
-			error(string.format(ERR_NO_EVENT, name))
+			error(ERROR_NO_EVENT:format(name))
 		end
 		return remote
 	end
@@ -96,7 +96,7 @@ local function Register(Remotes)
 	local function GetFunction(name)
 		local remote = REMOTES.FUNCTIONS[name]
 		if not remote then
-			error(string.format(ERR_NO_FUNCTION, name))
+			error(ERROR_NO_FUNCTION:format(name))
 		end
 		return remote
 	end

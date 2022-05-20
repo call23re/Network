@@ -6,7 +6,7 @@ local Symbol = require(script.Parent.Parent.Symbols.Function)
 local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
-local ERR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
+local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
@@ -24,8 +24,8 @@ function RemoteFunction.new()
 end
 
 function RemoteFunction:inbound(hook, context: string, config: any)
-	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
-	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
+	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
 
 	config = config ~= nil and config or {}
 
@@ -37,8 +37,8 @@ function RemoteFunction:inbound(hook, context: string, config: any)
 end
 
 function RemoteFunction:outbound(hook, context: string, config: any)
-	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
-	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
+	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
+	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
 
 	config = config ~= nil and config or {}
 
@@ -50,7 +50,7 @@ function RemoteFunction:outbound(hook, context: string, config: any)
 end
 
 function RemoteFunction:warn(value: boolean)
-	assert(typeof(value) == "boolean", ERR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
+	assert(typeof(value) == "boolean", ERROR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
 
 	self._Warn = value
 	return self
