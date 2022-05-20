@@ -3,16 +3,16 @@
 registry = "test"
 
 [[package]]
+name = "call23re/goodsignal"
+version = "0.1.1"
+dependencies = []
+
+[[package]]
 name = "call23re/network"
-version = "2.0.0"
-dependencies = [["Promise", "evaera/promise@4.0.0"], ["Signal", "stravant/goodsignal@0.1.1"]]
+version = "2.1.0"
+dependencies = [["Promise", "evaera/promise@4.0.0"], ["Signal", "call23re/goodsignal@0.1.1"]]
 
 [[package]]
 name = "evaera/promise"
 version = "4.0.0"
-dependencies = []
-
-[[package]]
-name = "stravant/goodsignal"
-version = "0.1.1"
 dependencies = []

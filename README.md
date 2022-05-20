@@ -18,7 +18,7 @@ Other advantages include:
 ### With Wally
 ```toml
 [dependencies]
-Network = "call23re/network@2.0.0"
+Network = "call23re/network@2.1.0"
 ```
 
 ## Usage
