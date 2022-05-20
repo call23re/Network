@@ -30,6 +30,8 @@ function RemoteEvent:inbound(hook, context: string, config: any)
 	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
 
+	config = config ~= nil and config or {}
+
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Inbound, {hook, config})
 	end
@@ -40,6 +42,8 @@ end
 function RemoteEvent:outbound(hook, context: string, config: any)
 	assert(typeof(hook) == "function", ERR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
+
+	config = config ~= nil and config or {}
 
 	if context == CONTEXT or context == "Shared" then
 		table.insert(self._Outbound, {hook, config})
