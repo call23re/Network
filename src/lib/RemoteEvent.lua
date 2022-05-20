@@ -219,6 +219,7 @@ function RemoteEvent:__Init(Name, Remote)
 				if self._Warn then
 					warn(err)
 				end
+				newSignal:Throw(err)
 			end)
 		end)
 	end
@@ -263,6 +264,7 @@ function RemoteEvent:__Init(Name, Remote)
 				if self._Warn then
 					warn(err)
 				end
+				newSignal:Throw(err)
 			end)
 		end)
 	end
