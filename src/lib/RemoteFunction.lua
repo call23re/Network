@@ -8,6 +8,9 @@ local None = require(script.Parent.Parent.Symbols.None)
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 
+type HeaderType = "Request" | "Response"
+type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
+
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
 
@@ -23,7 +26,7 @@ function RemoteFunction.new()
 	return self
 end
 
-function RemoteFunction:inbound(hook, context: string, config: any)
+function RemoteFunction:inbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
 
@@ -36,7 +39,7 @@ function RemoteFunction:inbound(hook, context: string, config: any)
 	return self
 end
 
-function RemoteFunction:outbound(hook, context: string, config: any)
+function RemoteFunction:outbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
 

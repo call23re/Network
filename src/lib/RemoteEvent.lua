@@ -12,6 +12,9 @@ local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 local ERROR_LENGTH = "First argument of %s must be a table with at least on element"
 local ERROR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
 
+type HeaderType = "Request" | "Response"
+type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
+
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
 
@@ -27,7 +30,7 @@ function RemoteEvent.new()
 	return self
 end
 
-function RemoteEvent:inbound(hook, context: string, config: any)
+function RemoteEvent:inbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
 
@@ -40,7 +43,7 @@ function RemoteEvent:inbound(hook, context: string, config: any)
 	return self
 end
 
-function RemoteEvent:outbound(hook, context: string, config: any)
+function RemoteEvent:outbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
 
@@ -147,7 +150,7 @@ function RemoteEvent:__Init(Name, Remote)
 			end)
 		end
 
-		function self:FireClients(List, ...)
+		function self:FireClients(List: {[number]: Player}, ...)
 			assert(List, ERROR_FIRST_ARGUMENT:format("FireClients", "table", "nil"))
 			assert(typeof(List) == "table", ERROR_FIRST_ARGUMENT:format("FireClients", "table", typeof(List)))
 			assert(#List > 0, ERROR_LENGTH:format("FireClients"))
@@ -171,7 +174,7 @@ function RemoteEvent:__Init(Name, Remote)
 			end)
 		end
 
-		function self:FireClientsExcept(List, ...)
+		function self:FireClientsExcept(List: {[number]: Player}, ...)
 			assert(List, ERROR_FIRST_ARGUMENT:format("FireClientsExcept", "table", "nil"))
 			assert(typeof(List) == "table", ERROR_FIRST_ARGUMENT:format("FireClientsExcept", "table", typeof(List)))
 
