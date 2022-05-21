@@ -8,6 +8,7 @@
 		"$className": "StarterPlayer",
 		"StarterPlayerScripts": {
 		  "$className": "StarterPlayerScripts",
+		  "$ignoreUnknownInstances": true,
 		  "Client": {
 			"$path": "tests/Client"
 		  }
@@ -16,6 +17,7 @@
 
 	  "ServerScriptService": {
 		"$className": "ServerScriptService",
+		"$ignoreUnknownInstances": true,
 		"Server": {
 			"$path": "tests/Server"
 		}
@@ -23,6 +25,7 @@
 
 	  "ReplicatedStorage": {
 		"$className": "ReplicatedStorage",
+		"$ignoreUnknownInstances": true,
 		"$path": "tests/Shared",
 		"Packages": {
 			"$path": "Packages",
