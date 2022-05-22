@@ -314,7 +314,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end
 
 		Response.OnClientEvent:Connect(function(...)
-			ApplyInbound({...}):andThen(function(args)
+			ApplyInbound(Response, {...}):andThen(function(args)
 				for _, ResponsePromise in pairs(InvokedPromises) do
 					if args == nil then args = {} end
 					ResponsePromise.Resolve(unpack(args))
@@ -331,7 +331,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 
 		Request.OnClientEvent:Connect(function(...)
 			if self.OnClientInvoke then
-				ApplyInbound({...}):andThen(function(args)
+				ApplyInbound(Request, {...}):andThen(function(args)
 					if args == nil then args = {} end
 
 					local res = {self.OnClientInvoke(nil, unpack(args))}
