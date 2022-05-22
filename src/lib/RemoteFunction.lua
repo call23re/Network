@@ -9,8 +9,40 @@ local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClien
 local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
 
 type HeaderType = "Request" | "Response"
-type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
+type hook = (header: {Remote: RemoteFunction, Type: HeaderType?}, config: any) -> typeof(Promise.new())
 
+--[=[
+	@prop Name string
+	@readonly
+	@within RemoteFunction
+	Refers to the name given to the RemoteFunction.
+]=]
+--[=[
+	@prop ClassName symbol
+	@readonly
+	@within RemoteFunction
+	Refers to the ClassName Symbol of the RemoteFunction.
+]=]
+--[=[
+	@function OnClientInvoke
+	@param ... any
+	@client
+	@within RemoteFunction
+	Called when the client is invoked by [RemoteFunction:InvokeClient].
+]=]
+--[=[
+	@function OnServerInvoke
+	@param Player Player
+	@param ... any
+	@server
+	@within RemoteFunction
+	Called when the server is invoked by [RemoteFunction:InvokeServer].
+]=]
+--[=[
+	A RemoteFunction emulates Roblox RemoteFunctions with RemoteEvents. It has feature parity with Roblox's RemoteFunction.
+
+	@class RemoteFunction
+]=]
 local RemoteFunction = {}
 RemoteFunction.__index = RemoteFunction
 
@@ -26,6 +58,18 @@ function RemoteFunction.new()
 	return self
 end
 
+--[=[
+	This function is used to hook into the RemoteFunction in two places: before an invocation callback is called and before an invocation response is returned. All inbound hooks are called in the order they are added.
+	
+	@param hook function -- The function to be called when the RemoteFunction receives a request.
+	@param context "Shared" | "Server" | "Client" -- The context in which the hook should be called.
+	@param config any -- An optional configuration value to be passed to the hook.
+	@return RemoteFunction -- Returns self.
+
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteFunction:inbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
@@ -39,6 +83,18 @@ function RemoteFunction:inbound(hook: hook, context: "Shared" | "Server" | "Clie
 	return self
 end
 
+--[=[
+	This function is used to hook into the RemoteFunction in two places: after an invocation callback is called and before the remote is invoked. All outbound hooks are called in the order they are added.
+	
+	@param hook function -- The function to be called when the RemoteFunction receives a request.
+	@param context "Shared" | "Server" | "Client" -- The context in which the hook should be called.
+	@param config any -- An optional configuration value to be passed to the hook.
+	@return RemoteFunction -- Returns self.
+
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteFunction:outbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
@@ -52,6 +108,16 @@ function RemoteFunction:outbound(hook: hook, context: "Shared" | "Server" | "Cli
 	return self
 end
 
+--[=[
+	This function is used to set a flag that will automatically catch and warn errors thrown by hooks.
+	
+	@param value boolean -- Defaults to false.
+	@return RemoteFunction -- Returns self.
+	
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteFunction:warn(value: boolean)
 	assert(typeof(value) == "boolean", ERROR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
 
@@ -98,13 +164,16 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end)
 	end
 
-	local function ApplyInbound(args)
+	local function ApplyInbound(Remote, args)
 		if #self._Inbound == 0 then
 			return Promise.resolve(args)
 		end
+
+		local Type = (Remote == Request and "Request" or "Response")
 		return ApplyPromises({
 			Remote = Response,
 			List = self._Inbound,
+			Type = Type,
 			args = args
 		}, args)
 	end
@@ -126,6 +195,17 @@ function RemoteFunction:__Init(Name, Request, Response)
 	if CONTEXT == "Server" then
 		local InvokedPromises = {}
 
+		--[=[
+			Calls the method bound to RemoteFunction by RemoteFunction.OnClientInvoke for the given Player.
+
+			@server
+			@within RemoteFunction
+
+			@param Client Player -- The player to invoke.
+			@param ... any -- The arguments to pass to the invocation.
+
+			@return Promise -- Returns a promise that resolves when the remote has been invoked or fails if any hooks failed.
+		]=]
 		function self:InvokeClient(Client: Player, ...)
 			assert(typeof(Client) == "Instance" and Client:IsA("Player"),  "First argument of InvokeClient must be a Player")
 
@@ -153,7 +233,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end
 
 		Response.OnServerEvent:Connect(function(Client, ...)
-			ApplyInbound({...}):andThen(function(args)
+			ApplyInbound(Response, {...}):andThen(function(args)
 				if args == nil then args = {} end
 				for _, ResponsePromise in pairs(InvokedPromises) do
 					ResponsePromise.Resolve(unpack(args))
@@ -170,13 +250,13 @@ function RemoteFunction:__Init(Name, Request, Response)
 
 		Request.OnServerEvent:Connect(function(Client, ...)
 			if self.OnServerInvoke then
-				ApplyInbound({Client, ...}):andThen(function(args)
+				ApplyInbound(Request, {Client, ...}):andThen(function(args)
 					if args == nil then args = {Client} end
 					if args[1] ~= Client then
 						table.insert(args, 1, Client)
 					end
 
-					local res = {self.OnServerInvoke(unpack(args))}
+					local res = {self.OnServerInvoke(nil, unpack(args))}
 					ApplyOutbound(Response, {Client, unpack(res)}):andThen(function(args)
 						if args == nil then args = {} end
 						table.remove(args, 1) -- remove the client
@@ -186,7 +266,6 @@ function RemoteFunction:__Init(Name, Request, Response)
 							warn(err)
 						end
 					end)
-
 				end):catch(function(err)
 					if self.Warn then
 						warn(err)
@@ -201,6 +280,16 @@ function RemoteFunction:__Init(Name, Request, Response)
 	if CONTEXT == "Client" then
 		local InvokedPromises = {}
 
+		--[=[
+			Calls the method bound to RemoteFunction by RemoteFunction.OnServerInvoke.
+
+			@client
+			@within RemoteFunction
+
+			@param ... any -- The arguments to pass to the invocation.
+
+			@return Promise -- Returns a promise that resolves when the remote has been invoked or fails if any hooks failed.
+		]=]
 		function self:InvokeServer(...)
 			local ok, res = true
 
@@ -245,7 +334,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 				ApplyInbound({...}):andThen(function(args)
 					if args == nil then args = {} end
 
-					local res = {self.OnClientInvoke(unpack(args))}
+					local res = {self.OnClientInvoke(nil, unpack(args))}
 					ApplyOutbound(Response, res):andThen(function(args)
 						if args == nil then args = {} end
 						Response:FireServer(unpack(args))

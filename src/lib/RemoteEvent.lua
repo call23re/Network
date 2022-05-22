@@ -15,6 +15,45 @@ local ERROR_NOT_PLAYER = "All elements of the first argument of FireClients must
 type HeaderType = "Request" | "Response"
 type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
 
+--[=[
+	@prop Name string
+	@readonly
+	@within RemoteEvent
+	Refers to the name given to the RemoteEvent.
+]=]
+--[=[
+	@prop ClassName symbol
+	@readonly
+	@within RemoteEvent
+	Refers to the ClassName Symbol of the RemoteEvent.
+]=]
+--[=[
+	Fires listening functions when the server fires the RemoteEvent at this client.
+
+	@function OnClientEvent
+	@param ... any
+	@client
+	@within RemoteEvent
+
+	@return Connection(...)
+]=]
+--[=[
+	Fires listening functions when the client fires the RemoteEvent.
+
+	@function OnServerEvent
+	@param Player Player
+	@param ... any
+	@server
+	@within RemoteEvent
+
+	@return Connection(Player, ...)
+	
+]=]
+--[=[
+	A RemoteEvent wraps a Roblox RemoteEvent and provides ways to hook into it. It has feature parity with a regular RemoteEvent.
+
+	@class RemoteEvent
+]=]
 local RemoteEvent = {}
 RemoteEvent.__index = RemoteEvent
 
@@ -30,6 +69,26 @@ function RemoteEvent.new()
 	return self
 end
 
+--[=[
+	This function is used to hook into the RemoteEvent listener. All inbound hooks are called in the order they are added.
+	
+	@param hook function -- The function to be called when the RemoteEvent receives a request.
+	@param context "Shared" | "Server" | "Client" -- The context in which the hook should be called.
+	@param config any -- An optional configuration value to be passed to the hook.
+	@return RemoteEvent -- Returns self.
+
+	:::tip
+	This function can be chained.
+	```lua
+	RemoteEvent
+		:inbound(Middleware.Logger, "Client")
+		:inbound(Transformers.Decode, "Client")
+	```
+	:::
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteEvent:inbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("inbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("inbound", "string", typeof(context)))
@@ -43,6 +102,27 @@ function RemoteEvent:inbound(hook: hook, context: "Shared" | "Server" | "Client"
 	return self
 end
 
+
+--[=[
+	This function is used to hook into the RemoteEvent before it fires. All outbound hooks are called in the order they are added.
+	
+	@param hook function -- The function to be called when the RemoteEvent receives a request.
+	@param context "Shared" | "Server" | "Client" -- The context in which the hook should be called.
+	@param config any -- An optional configuration value to be passed to the hook.
+	@return RemoteEvent -- Returns self.
+
+	:::tip
+	This function can be chained.
+	```lua
+	RemoteEvent
+		:outbound(Middleware.Logger, "Server")
+		:outbound(Transformers.Encode, "Server")
+	```
+	:::
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteEvent:outbound(hook: hook, context: "Shared" | "Server" | "Client", config: any)
 	assert(typeof(hook) == "function", ERROR_FIRST_ARGUMENT:format("outbound", "function", typeof(hook)))
 	assert(typeof(context) == "string", ERROR_FIRST_ARGUMENT:format("outbound", "string", typeof(context)))
@@ -56,6 +136,27 @@ function RemoteEvent:outbound(hook: hook, context: "Shared" | "Server" | "Client
 	return self
 end
 
+--[=[
+	This function is used to set a flag that will automatically catch and warn errors thrown by hooks.
+	
+	@param value boolean -- Defaults to false.
+	@return RemoteEvent -- Returns self.
+
+	:::tip
+	This function can be chained.
+	```lua
+	RemoteEvent
+		:inbound(Middleware.Logger, "Shared")
+		:inbound(Transformers.Decode, "Client")
+		:outbound(Middleware.Logger, "Server")
+		:outbound(Transformers.Encode, "Server")
+		:warn(true)
+	```
+	:::
+	:::caution
+	This function should only be used when you are registering your remotes!
+	:::
+]=]
 function RemoteEvent:warn(value: boolean)
 	assert(typeof(value) == "boolean", ERROR_FIRST_ARGUMENT:format("warn", "boolean", typeof(value)))
 
@@ -116,6 +217,17 @@ function RemoteEvent:__Init(Name, Remote)
 	end
 
 	if CONTEXT == "Server" then
+		--[=[
+			Fires RemoteEvent.OnClientEvent for the specified player.
+
+			@server
+			@within RemoteEvent
+
+			@param Player Player -- The player to fire the event for.
+			@param ... any -- The arguments to pass to the event.
+
+			@return Promise -- Returns a promise that resolves when the event has been fired or fails if any hooks failed.
+		]=]
 		function self:FireClient(Player: Player, ...)
 			local args = {...}
 
@@ -133,6 +245,16 @@ function RemoteEvent:__Init(Name, Remote)
 			end)
 		end
 
+		--[=[
+			Fires RemoteEvent.OnClientEvent for all players.
+
+			@server
+			@within RemoteEvent
+
+			@param ... any -- The arguments to pass to the event.
+
+			@return Promise -- Returns a promise that resolves when the event has been fired or fails if any hooks failed.
+		]=]
 		function self:FireAllClients(...)
 			local args = {...}
 
@@ -150,6 +272,17 @@ function RemoteEvent:__Init(Name, Remote)
 			end)
 		end
 
+		--[=[
+			Fires RemoteEvent.OnClientEvent for specified players.
+
+			@server
+			@within RemoteEvent
+
+			@param List {[number]: Player} -- The players to fire the event for.
+			@param ... any -- The arguments to pass to the event.
+
+			@return Promise -- Returns a promise that resolves when the event has been fired or fails if any hooks failed.
+		]=]
 		function self:FireClients(List: {[number]: Player}, ...)
 			assert(List, ERROR_FIRST_ARGUMENT:format("FireClients", "table", "nil"))
 			assert(typeof(List) == "table", ERROR_FIRST_ARGUMENT:format("FireClients", "table", typeof(List)))
@@ -174,6 +307,17 @@ function RemoteEvent:__Init(Name, Remote)
 			end)
 		end
 
+		--[=[
+			Fires RemoteEvent.OnClientEvent for all players except those in the list.
+
+			@server
+			@within RemoteEvent
+
+			@param List {[number]: Player} -- The players not to fire the event for.
+			@param ... any -- The arguments to pass to the event.
+
+			@return Promise -- Returns a promise that resolves when the event has been fired or fails if any hooks failed.
+		]=]
 		function self:FireClientsExcept(List: {[number]: Player}, ...)
 			assert(List, ERROR_FIRST_ARGUMENT:format("FireClientsExcept", "table", "nil"))
 			assert(typeof(List) == "table", ERROR_FIRST_ARGUMENT:format("FireClientsExcept", "table", typeof(List)))
@@ -228,6 +372,16 @@ function RemoteEvent:__Init(Name, Remote)
 	end
 
 	if CONTEXT == "Client" then
+		--[=[
+			Fires RemoteEvent.OnServerEvent on the server using the arguments specified with an additional player argument at the beginning.
+
+			@client
+			@within RemoteEvent
+
+			@param ... any -- The arguments to pass to the event.
+
+			@return Promise -- Returns a promise that resolves when the event has been fired or fails if any hooks failed.
+		]=]
 		function self:FireServer(...)
 			local args = {...}
 

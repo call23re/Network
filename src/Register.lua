@@ -18,6 +18,20 @@ local REMOTES = {
 	FUNCTIONS = {}
 }
 
+--[=[
+	Registers a dictionary of remotes where the key is the name of the remote and the value is a RemoteEvent or RemoteFunction class.
+
+	```lua
+		-- ReplicatedStorage/Remotes.lua
+		local Network = require(...Network)
+		return Network.Register({
+			FooEvent = Network.Event.new(),
+			BarFunction = Network.Function.new()
+		})
+	```
+
+	@class Register
+]=]
 local function Register(Remotes)
 	local remoteEventsFolder
 	local remoteFunctionsFolder
@@ -92,6 +106,12 @@ local function Register(Remotes)
 		end
 	end
 
+	--[=[
+		@function GetEvent
+		@within Register
+		@param name string -- The name of the remote event.
+		@return RemoteEvent
+	]=]
 	local function GetEvent(name)
 		local remote = REMOTES.EVENTS[name]
 		if not remote then
@@ -100,6 +120,12 @@ local function Register(Remotes)
 		return remote
 	end
 
+	--[=[
+		@function GetFunction
+		@within Register
+		@param name string -- The name of the remote function.
+		@return RemoteFunction
+	]=]
 	local function GetFunction(name)
 		local remote = REMOTES.FUNCTIONS[name]
 		if not remote then
