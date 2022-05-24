@@ -27,7 +27,7 @@ local Remotes = require(ReplicatedStorage.Remotes)
 local State = {...}
 
 local GetState = Remotes.GetFunction("GetState")
-GetState.OnClientInvoke = function() return State end
+GetState.OnServerInvoke = function() return State end
 ```
 
 </TabItem>
@@ -77,7 +77,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes)
 
 local Ready = Remotes.GetFunction("Ready")
-Ready.OnServerInvoke = function()
+Ready.OnClientInvoke = function()
 	return math.random() > 0.5
 end
 ```
