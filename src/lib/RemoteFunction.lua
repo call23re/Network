@@ -256,7 +256,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 						table.insert(args, 1, Client)
 					end
 
-					local res = {self.OnServerInvoke(nil, unpack(args))}
+					local res = {self.OnServerInvoke(unpack(args))}
 					ApplyOutbound(Response, {Client, unpack(res)}):andThen(function(args)
 						if args == nil then args = {} end
 						table.remove(args, 1) -- remove the client
@@ -334,7 +334,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 				ApplyInbound(Request, {...}):andThen(function(args)
 					if args == nil then args = {} end
 
-					local res = {self.OnClientInvoke(nil, unpack(args))}
+					local res = {self.OnClientInvoke(unpack(args))}
 					ApplyOutbound(Response, res):andThen(function(args)
 						if args == nil then args = {} end
 						Response:FireServer(unpack(args))
