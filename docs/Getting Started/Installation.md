@@ -6,7 +6,7 @@ sidebar_position: 1
 ### With Wally
 ```toml
 [dependencies]
-Network = "call23re/network@2.2.0"
+Network = "call23re/network@2.2.1"
 ```
 
 ### Releases
