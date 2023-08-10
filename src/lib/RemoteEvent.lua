@@ -194,7 +194,7 @@ function RemoteEvent:__Init(Name, Remote)
 				end)
 			end)
 			:catch(function(err)
-				Reject(err)
+				Reject(err, args)
 			end)
 			:finally(function()
 				Resolve(args)
@@ -240,7 +240,7 @@ function RemoteEvent:__Init(Name, Remote)
 					if self._Warn then
 						warn(err)
 					end
-					reject(err)
+					reject(err, args)
 				end)
 			end)
 		end
@@ -267,7 +267,7 @@ function RemoteEvent:__Init(Name, Remote)
 					if self._Warn then
 						warn(err)
 					end
-					reject(err)
+					reject(err, args)
 				end)
 			end)
 		end
@@ -302,7 +302,7 @@ function RemoteEvent:__Init(Name, Remote)
 					if self._Warn then
 						warn(err)
 					end
-					reject(err)
+					reject(err, args)
 				end)
 			end)
 		end
@@ -336,7 +336,7 @@ function RemoteEvent:__Init(Name, Remote)
 					if self._Warn then
 						warn(err)
 					end
-					reject(err)
+					reject(err, args)
 				end)
 			end)
 		end
@@ -362,11 +362,11 @@ function RemoteEvent:__Init(Name, Remote)
 					table.insert(args, 1, Player)
 				end
 				newSignal:Fire(unpack(args))
-			end):catch(function(err)
+			end):catch(function(err, ...)
 				if self._Warn then
 					warn(err)
 				end
-				newSignal:Throw(err)
+				newSignal:Throw(err, ...)
 			end)
 		end)
 	end
@@ -394,7 +394,7 @@ function RemoteEvent:__Init(Name, Remote)
 					if self._Warn then
 						warn(err)
 					end
-					reject(err)
+					reject(err, args)
 				end)
 			end)
 		end
@@ -417,11 +417,11 @@ function RemoteEvent:__Init(Name, Remote)
 			ApplyInbound({...}):andThen(function(args)
 				if args == nil then args = {} end
 				newSignal:Fire(unpack(args))
-			end):catch(function(err)
+			end):catch(function(err, ...)
 				if self._Warn then
 					warn(err)
 				end
-				newSignal:Throw(err)
+				newSignal:Throw(err, ...)
 			end)
 		end)
 	end
