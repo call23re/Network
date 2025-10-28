@@ -1,0 +1,11 @@
+std = "selene_definitions"
+exclude = ["Packages/**", "tests/**"]
+
+[config]
+# Allow for `_G.__DEV__` (etc) with packages like React-lua
+global_usage = { ignore_pattern = "^__" }
+empty_if = { comments_count = true }
+empty_loop = { comments_count = true }
+
+[rules]
+global_usage = "allow"
