@@ -33,24 +33,24 @@ local REMOTES = {
 	@class Register
 ]=]
 local function Register(Remotes)
-	local remoteEventsFolder
-	local remoteFunctionsFolder
+	local RemoteEventsFolder
+	local RemoteFunctionsFolder
 
 	if RunService:IsServer() then
 
-		remoteEventsFolder = DIR:FindFirstChild(DIR_NAME_EVENTS)
-		remoteFunctionsFolder = DIR:FindFirstChild(DIR_NAME_FUNCTIONS)
+		RemoteEventsFolder = DIR:FindFirstChild(DIR_NAME_EVENTS)
+		RemoteFunctionsFolder = DIR:FindFirstChild(DIR_NAME_FUNCTIONS)
 
-		if not remoteEventsFolder then
-			remoteEventsFolder = Instance.new("Folder")
-			remoteEventsFolder.Name = DIR_NAME_EVENTS
-			remoteEventsFolder.Parent = DIR
+		if not RemoteEventsFolder then
+			RemoteEventsFolder = Instance.new("Folder")
+			RemoteEventsFolder.Name = DIR_NAME_EVENTS
+			RemoteEventsFolder.Parent = DIR
 		end
 
-		if not remoteFunctionsFolder then
-			remoteFunctionsFolder = Instance.new("Folder")
-			remoteFunctionsFolder.Name = DIR_NAME_FUNCTIONS
-			remoteFunctionsFolder.Parent = DIR
+		if not RemoteFunctionsFolder then
+			RemoteFunctionsFolder = Instance.new("Folder")
+			RemoteFunctionsFolder.Name = DIR_NAME_FUNCTIONS
+			RemoteFunctionsFolder.Parent = DIR
 		end
 
 		for name, class in pairs(Remotes) do
@@ -58,7 +58,7 @@ local function Register(Remotes)
 				if not REMOTES.EVENTS[name] then
 					local remote = Instance.new("RemoteEvent")
 					remote.Name = name
-					remote.Parent = remoteEventsFolder
+					remote.Parent = RemoteEventsFolder
 
 					class:__Init(name, remote)
 					REMOTES.EVENTS[name] = class
@@ -67,34 +67,34 @@ local function Register(Remotes)
 				if not REMOTES.FUNCTIONS[name] then
 					local RequestRemote = Instance.new("RemoteEvent")
 					RequestRemote.Name = "Request" .. name
-					RequestRemote.Parent = remoteFunctionsFolder
+					RequestRemote.Parent = RemoteFunctionsFolder
 
 					local ResponseRemote = Instance.new("RemoteEvent")
 					ResponseRemote.Name = "Response" .. name
-					ResponseRemote.Parent = remoteFunctionsFolder
+					ResponseRemote.Parent = RemoteFunctionsFolder
 
 					class:__Init(name, RequestRemote, ResponseRemote)
 					REMOTES.FUNCTIONS[name] = class
 				end
 			else
-				error(string.format(ERROR_INVALID_KIND, name))
+				error(ERROR_INVALID_KIND:format(name))
 			end
 		end
 	elseif RunService:IsClient() then
-		remoteEventsFolder = DIR:WaitForChild(DIR_NAME_EVENTS)
-		remoteFunctionsFolder = DIR:WaitForChild(DIR_NAME_FUNCTIONS)
+		RemoteEventsFolder = DIR:WaitForChild(DIR_NAME_EVENTS)
+		RemoteFunctionsFolder = DIR:WaitForChild(DIR_NAME_FUNCTIONS)
 
 		for name, class in pairs(Remotes) do
 			if class.ClassName == EventSymbol then
-				local remote = remoteEventsFolder:WaitForChild(name)
+				local remote = RemoteEventsFolder:WaitForChild(name)
 
 				if not REMOTES.EVENTS[name] then
 					class:__Init(name, remote)
 					REMOTES.EVENTS[name] = class
 				end
 			elseif class.ClassName == FunctionSymbol then
-				local RequestRemote = remoteFunctionsFolder:WaitForChild("Request" .. name)
-				local ResponseRemote = remoteFunctionsFolder:WaitForChild("Response" .. name)
+				local RequestRemote = RemoteFunctionsFolder:WaitForChild("Request" .. name)
+				local ResponseRemote = RemoteFunctionsFolder:WaitForChild("Response" .. name)
 
 				if not REMOTES.FUNCTIONS[name] then
 					class:__Init(name, RequestRemote, ResponseRemote)
