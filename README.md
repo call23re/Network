@@ -10,17 +10,17 @@ The core API is designed to look like the default remote APIs in order to reduce
 
 Other advantages include:
 - Hooks
-- Luau Types (soon™)
+- Luau Types
 - Asynchronous Remote Functions
 - Promisified Remotes
-- An expanded core API (`FireClients`, `FireClientsExcept`)
+- An expanded but minimal core API (`FireClients`, `FireClientsExcept`)
 
 ## Installation
 
 ### With Wally
 ```toml
 [dependencies]
-Network = "call23re/network@2.2.1"
+Network = "call23re/network@2.4.0"
 ```
 
 ## Usage
