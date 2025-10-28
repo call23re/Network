@@ -8,9 +8,9 @@ local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
 
-local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
-local ERROR_LENGTH = "First argument of %s must be a table with at least on element"
-local ERROR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s"
+local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>" :: any
+local ERROR_LENGTH = "First argument of %s must be a table with at least on element" :: any
+local ERROR_NOT_PLAYER = "All elements of the first argument of FireClients must be players, got <%s> at index %s" :: any
 
 type HeaderType = "Request" | "Response"
 type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
@@ -164,7 +164,7 @@ function RemoteEvent:warn(value: boolean)
 	return self
 end
 
-function RemoteEvent:__Init(Name, Remote)
+function RemoteEvent:__Init(Name: string, Remote: RemoteEvent)
 	if self.Instantiated then return end
 	self.Instantiated = true
 
@@ -172,11 +172,10 @@ function RemoteEvent:__Init(Name, Remote)
 
 	local function ApplyPromises(List, args)
 		return Promise.new(function(Resolve, Reject)
-			Promise.each(List, function(data)
+			Promise.each(List, function(data: {hook})
 				return Promise.new(function(Resolve, Reject)
-
 					local hook, config = unpack(data)
-					local header = {
+					local header: {Remote: RemoteEvent, Type: HeaderType?} = {
 						Remote = Remote
 					}
 
@@ -202,15 +201,17 @@ function RemoteEvent:__Init(Name, Remote)
 		end)
 	end
 
-	local function ApplyInbound(args)
-		if #self._Inbound == 0 then
+	local function ApplyInbound<T>(args: {T})
+		local inboundHooks = self._Inbound :: {any}
+		if typeof(inboundHooks) ~= "table" or #inboundHooks == 0 then
 			return Promise.resolve(args)
 		end
-		return ApplyPromises(self._Inbound, args)
+		return ApplyPromises(inboundHooks, args)
 	end
 
 	local function ApplyOutbound(args)
-		if #self._Outbound == 0 then
+		local outboundHooks = self._Outbound :: {any}
+		if typeof(outboundHooks) ~= "table" or #outboundHooks == 0 then
 			return Promise.resolve(args)
 		end
 		return ApplyPromises(self._Outbound, args)
@@ -232,10 +233,10 @@ function RemoteEvent:__Init(Name, Remote)
 			local args = {...}
 
 			return Promise.new(function(resolve, reject)
-				ApplyOutbound(args):andThen(function(new_args)
-					if new_args == nil then new_args = {} end
-					Remote:FireClient(Player, unpack(new_args))
-					resolve(unpack(new_args))
+				ApplyOutbound(args):andThen(function(newArgs: {any}?)
+					newArgs = if newArgs == nil then {} else newArgs
+					Remote:FireClient(Player, unpack(newArgs))
+					resolve(unpack(newArgs))
 				end):catch(function(err)
 					if self._Warn then
 						warn(err)
@@ -259,10 +260,10 @@ function RemoteEvent:__Init(Name, Remote)
 			local args = {...}
 
 			return Promise.new(function(resolve, reject)
-				ApplyOutbound(args):andThen(function(new_args)
-					if new_args == nil then new_args = {} end
-					Remote:FireAllClients(unpack(new_args))
-					resolve(unpack(new_args))
+				ApplyOutbound(args):andThen(function(newArgs: {any}?)
+					newArgs = if newArgs == nil then {} else newArgs
+					Remote:FireAllClients(unpack(newArgs))
+					resolve(unpack(newArgs))
 				end):catch(function(err)
 					if self._Warn then
 						warn(err)
@@ -291,13 +292,13 @@ function RemoteEvent:__Init(Name, Remote)
 			local args = {...}
 
 			return Promise.new(function(resolve, reject)
-				ApplyOutbound(args):andThen(function(new_args)
-					if new_args == nil then new_args = {} end
-					for key, Player: Player in pairs(List) do
+				ApplyOutbound(args):andThen(function(newArgs: {any}?)
+					newArgs = if newArgs == nil then {} else newArgs
+					for key, Player: Player in List do
 						assert(typeof(Player) == "Instance" and Player:IsA("Player"), ERROR_NOT_PLAYER:format(typeof(Player), key))
-						Remote:FireClient(Player, unpack(new_args))
+						Remote:FireClient(Player, unpack(newArgs))
 					end
-					resolve(unpack(new_args))
+					resolve(unpack(newArgs))
 				end):catch(function(err)
 					if self._Warn then
 						warn(err)
@@ -325,13 +326,13 @@ function RemoteEvent:__Init(Name, Remote)
 			local args = {...}
 
 			return Promise.new(function(resolve, reject)
-				ApplyOutbound(args):andThen(function(new_args)
-					if new_args == nil then new_args = {} end
-					for _, Player: Player in pairs(Players:GetPlayers()) do
+				ApplyOutbound(args):andThen(function(newArgs: {any}?)
+					newArgs = if newArgs == nil then {} else newArgs
+					for _, Player: Player in Players:GetPlayers() do
 						if table.find(List, Player) then continue end
-						Remote:FireClient(Player, unpack(new_args))
+						Remote:FireClient(Player, unpack(newArgs))
 					end
-					resolve(unpack(new_args))
+					resolve(unpack(newArgs))
 				end):catch(function(err)
 					if self._Warn then
 						warn(err)
@@ -355,9 +356,9 @@ function RemoteEvent:__Init(Name, Remote)
 			end
 		}
 
-		Remote.OnServerEvent:Connect(function(Player, ...)
-			ApplyInbound({Player, ...}):andThen(function(args)
-				if args == nil then args = {Player} end
+		Remote.OnServerEvent:Connect(function(Player: Player, ...)
+			ApplyInbound({Player, ...}):andThen(function(args: {Player}?)
+				args = if args == nil then {Player} else args
 				if args[1] ~= Player then
 					table.insert(args, 1, Player)
 				end
@@ -386,10 +387,10 @@ function RemoteEvent:__Init(Name, Remote)
 			local args = {...}
 
 			return Promise.new(function(resolve, reject)
-				ApplyOutbound(args):andThen(function(new_args)
-					if new_args == nil then new_args = {} end
-					Remote:FireServer(unpack(new_args))
-					resolve(unpack(new_args))
+				ApplyOutbound(args):andThen(function(newArgs: {any}?)
+					newArgs = if newArgs == nil then {} else newArgs
+					Remote:FireServer(unpack(newArgs))
+					resolve(unpack(newArgs))
 				end):catch(function(err)
 					if self._Warn then
 						warn(err)
@@ -414,8 +415,8 @@ function RemoteEvent:__Init(Name, Remote)
 		}
 
 		Remote.OnClientEvent:Connect(function(...)
-			ApplyInbound({...}):andThen(function(args)
-				if args == nil then args = {} end
+			ApplyInbound({...}):andThen(function(args: {any}?)
+				args = if args == nil then {} else args
 				newSignal:Fire(unpack(args))
 			end):catch(function(err, ...)
 				if self._Warn then

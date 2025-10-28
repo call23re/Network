@@ -6,10 +6,10 @@ local Symbol = require(script.Parent.Parent.Symbols.Function)
 local None = require(script.Parent.Parent.Symbols.None)
 
 local CONTEXT = if RunService:IsServer() then "Server" elseif RunService:IsClient() then "Client" else nil
-local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>"
+local ERROR_FIRST_ARGUMENT = "First argument of %s must be a %s, got <%s>" :: any
 
 type HeaderType = "Request" | "Response"
-type hook = (header: {Remote: RemoteFunction, Type: HeaderType?}, config: any) -> typeof(Promise.new())
+type hook = (header: {Remote: RemoteEvent, Type: HeaderType?}, config: any) -> typeof(Promise.new())
 
 --[=[
 	@prop Name string
@@ -125,7 +125,7 @@ function RemoteFunction:warn(value: boolean)
 	return self
 end
 
-function RemoteFunction:__Init(Name, Request, Response)
+function RemoteFunction:__Init(Name: string, Request: RemoteEvent, Response: RemoteEvent)
 	if self.Instantiated then return end
 	self.Instantiated = true
 
@@ -133,16 +133,16 @@ function RemoteFunction:__Init(Name, Request, Response)
 
 	local function ApplyPromises(Options, args)
 		return Promise.new(function(Resolve, Reject)
-			Promise.each(Options.List, function(data)
+			Promise.each(Options.List, function(data: {hook})
 				return Promise.new(function(Resolve, Reject)
 
-					local func, config = unpack(data)
+					local hook, config = unpack(data)
 					local header = {
 						Remote = Options.Remote,
 						Type = Options.Type
 					}
 
-					func(header, config, unpack(args)):andThen(function(...)
+					hook(header, config, unpack(args)):andThen(function(...)
 						local res = {...}
 
 						args = if #res == 0 then args else res
@@ -164,36 +164,38 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end)
 	end
 
-	local function ApplyInbound(Remote, args)
-		if #self._Inbound == 0 then
+	local function ApplyInbound(Remote: RemoteEvent, args: {any})
+		local inboundHooks = self._Inbound :: {any}
+		if typeof(inboundHooks) ~= "table" or #inboundHooks == 0 then
 			return Promise.resolve(args)
 		end
 
-		local Type = (Remote == Request and "Request" or "Response")
+		local Type = if Remote == Request then "Request" else "Response"
 		return ApplyPromises({
 			Remote = Response,
-			List = self._Inbound,
+			List = inboundHooks,
 			Type = Type,
 			args = args
 		}, args)
 	end
 
-	local function ApplyOutbound(Remote, args)
-		if #self._Outbound == 0 then
+	local function ApplyOutbound<T>(Remote, args: {T})
+		local outboundHooks = self._Outbound :: {any}
+		if typeof(outboundHooks) ~= "table" or #outboundHooks == 0 then
 			return Promise.resolve(args)
 		end
 
-		local Type = (Remote == Request and "Request" or "Response")
+		local Type = if Remote == Request then "Request" else "Response"
 		return ApplyPromises({
 			Remote = Remote,
-			List = self._Outbound,
+			List = outboundHooks,
 			Type = Type,
 			args = args
 		}, args)
 	end
 
 	if CONTEXT == "Server" then
-		local InvokedPromises = {}
+		local InvokedPromises = {} :: {any}
 
 		--[=[
 			Calls the method bound to RemoteFunction by RemoteFunction.OnClientInvoke for the given Player.
@@ -209,10 +211,10 @@ function RemoteFunction:__Init(Name, Request, Response)
 		function self:InvokeClient(Client: Player, ...)
 			assert(typeof(Client) == "Instance" and Client:IsA("Player"),  "First argument of InvokeClient must be a Player")
 
-			local ok, res = true
+			local ok, res = true, nil
 
-			ApplyOutbound(Request, {Client, ...}):andThen(function(args)
-				if args == nil then args = {} end
+			ApplyOutbound(Request, {Client, ...}):andThen(function(args: {Player}?)
+				args = if args == nil then {} else args
 				table.remove(args, 1) -- remove the client
 				Request:FireClient(Client, unpack(args))
 			end):catch(function(err)
@@ -233,13 +235,13 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end
 
 		Response.OnServerEvent:Connect(function(Client, ...)
-			ApplyInbound(Response, {...}):andThen(function(args)
-				if args == nil then args = {} end
-				for _, ResponsePromise in pairs(InvokedPromises) do
+			ApplyInbound(Response, {...}):andThen(function(args: {any}?)
+				args = if args == nil then {} else args
+				for _, ResponsePromise in InvokedPromises do
 					ResponsePromise.Resolve(unpack(args))
 				end
 			end):catch(function(err)
-				for _, ResponsePromise in pairs(InvokedPromises) do
+				for _, ResponsePromise in InvokedPromises do
 					ResponsePromise.Reject(err)
 				end
 				if self.Warn then
@@ -248,17 +250,17 @@ function RemoteFunction:__Init(Name, Request, Response)
 			end)
 		end)
 
-		Request.OnServerEvent:Connect(function(Client, ...)
+		Request.OnServerEvent:Connect(function(Client: Player, ...)
 			if self.OnServerInvoke then
-				ApplyInbound(Request, {Client, ...}):andThen(function(args)
-					if args == nil then args = {Client} end
+				ApplyInbound(Request, {Client, ...}):andThen(function(args: {any}?)
+					args = if args == nil then {Client} else args
 					if args[1] ~= Client then
 						table.insert(args, 1, Client)
 					end
 
 					local res = {self.OnServerInvoke(unpack(args))}
-					ApplyOutbound(Response, {Client, unpack(res)}):andThen(function(args)
-						if args == nil then args = {} end
+					ApplyOutbound(Response, {Client, unpack(res)}):andThen(function(args: {any}?)
+						args = if args == nil then {} else args
 						table.remove(args, 1) -- remove the client
 						Response:FireClient(Client, unpack(args))
 					end):catch(function(err)
@@ -278,7 +280,7 @@ function RemoteFunction:__Init(Name, Request, Response)
 	end
 
 	if CONTEXT == "Client" then
-		local InvokedPromises = {}
+		local InvokedPromises = {} :: {any}
 
 		--[=[
 			Calls the method bound to RemoteFunction by RemoteFunction.OnServerInvoke.
@@ -291,10 +293,10 @@ function RemoteFunction:__Init(Name, Request, Response)
 			@return Promise -- Returns a promise that resolves when the remote has been invoked or fails if any hooks failed.
 		]=]
 		function self:InvokeServer(...)
-			local ok, res = true
+			local ok, res = true, nil
 
-			ApplyOutbound(Request, {...}):andThen(function(args)
-				if args == nil then args = {} end
+			ApplyOutbound(Request, {...}):andThen(function(args: {any}?)
+				args = if args == nil then {} else args
 				Request:FireServer(unpack(args))
 			end):catch(function(err)
 				ok, res = false, err
@@ -314,13 +316,13 @@ function RemoteFunction:__Init(Name, Request, Response)
 		end
 
 		Response.OnClientEvent:Connect(function(...)
-			ApplyInbound(Response, {...}):andThen(function(args)
-				for _, ResponsePromise in pairs(InvokedPromises) do
-					if args == nil then args = {} end
+			ApplyInbound(Response, {...}):andThen(function(args: {any}?)
+				for _, ResponsePromise in InvokedPromises do
+					args = if args == nil then {} else args
 					ResponsePromise.Resolve(unpack(args))
 				end
 			end):catch(function(err)
-				for _, ResponsePromise in pairs(InvokedPromises) do
+				for _, ResponsePromise in InvokedPromises do
 					ResponsePromise.Reject(err)
 				end
 				if self.Warn then
@@ -331,12 +333,12 @@ function RemoteFunction:__Init(Name, Request, Response)
 
 		Request.OnClientEvent:Connect(function(...)
 			if self.OnClientInvoke then
-				ApplyInbound(Request, {...}):andThen(function(args)
-					if args == nil then args = {} end
+				ApplyInbound(Request, {...}):andThen(function(args: {any}?)
+					args = if args == nil then {} else args
 
 					local res = {self.OnClientInvoke(unpack(args))}
-					ApplyOutbound(Response, res):andThen(function(args)
-						if args == nil then args = {} end
+					ApplyOutbound(Response, res):andThen(function(args: {any}?)
+						args = if args == nil then {} else args
 						Response:FireServer(unpack(args))
 					end):catch(function(err)
 						if self.Warn then
