@@ -4,8 +4,8 @@ local function Defer()
 	local res, rej;
 
 	local promise = Promise.new(function(Resolve, Reject)
-		res = Resolve;
-		rej = Reject;
+		res = Resolve
+		rej = Reject
 	end)
 
 	return {
